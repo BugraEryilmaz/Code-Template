@@ -83,6 +83,9 @@ int main(int argc, char* argv[])
     //
     // Normally, you would be running your ray tracing
     // code here to produce the desired image.
+
+    // test values
+    
     Ray ray;
     ray.dir.x=0;
     ray.dir.y=0;
