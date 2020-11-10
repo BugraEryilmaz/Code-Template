@@ -85,6 +85,27 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         stream >> camera.image_width >> camera.image_height;
         stream >> camera.image_name;
 
+        // Calculate gaze up right
+
+        camera.gaze = camera.gaze.normalize();
+        camera.right = camera.gaze.cross(camera.up);
+        camera.right = camera.right.normalize();
+        camera.up = camera.right.cross(camera.gaze);
+        camera.up = camera.up.normalize();
+
+        // Calculate topleft
+
+        camera.topleft = camera.position + camera.gaze * camera.near_distance + camera.up * camera.near_plane.w +camera.right * camera.near_plane.x;
+        // middle = camera.position + camera.gaze * camera.near_distance;
+        // topleft = middle + camera.up * t + camera.right * l;
+
+        // Calculate half pixels
+
+        camera.halfpixelD = camera.up * ((camera.near_plane.z - camera.near_plane.w) / (2*camera.image_height));
+        camera.halfpixelR = camera.right * ((camera.near_plane.y - camera.near_plane.x) / (2*camera.image_width));
+
+
+
         cameras.push_back(camera);
         element = element->NextSiblingElement("Camera");
     }

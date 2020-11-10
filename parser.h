@@ -2,6 +2,7 @@
 #define __HW1__PARSER__
 
 #include <string>
+#include <math.h>
 #include <vector>
 
 namespace parser
@@ -11,6 +12,52 @@ namespace parser
     struct Vec3f
     {
         float x, y, z;
+        Vec3f operator+ (const Vec3f &rhs) {
+            Vec3f ret;
+            ret.x = x + rhs.x;
+            ret.y = y + rhs.y;
+            ret.z = z + rhs.z;
+            return ret;
+        }
+        Vec3f operator- (const Vec3f &rhs) {
+            Vec3f ret;
+            ret.x = x - rhs.x;
+            ret.y = y - rhs.y;
+            ret.z = z - rhs.z;
+            return ret;
+        }
+        Vec3f operator* (double rhs) {
+            Vec3f ret;
+            ret.x = x * rhs;
+            ret.y = y * rhs;
+            ret.z = z * rhs;
+            return ret;
+        }
+        Vec3f operator= (const Vec3f &rhs) {
+            x = rhs.x;
+            y = rhs.y;
+            z = rhs.z;
+            return *this;
+        }
+        Vec3f cross (Vec3f &rhs) {
+            Vec3f ret;
+            ret.x = y*rhs.z - z*rhs.y;
+            ret.y = z*rhs.x - x*rhs.z;
+            ret.z = x*rhs.y - y*rhs.x;
+            return ret;
+        }
+        double dot (Vec3f &rhs) {
+            return x*rhs.x+y*rhs.y+z*rhs.z;
+        }
+        Vec3f normalize () {
+            double len;
+            len = std::sqrt(x*x+y*y+z*z);
+            Vec3f ret;
+            ret.x = x/len;
+            ret.y = y/len;
+            ret.z = z/len;
+            return ret;
+        }
     };
 
     struct Vec3i
@@ -28,6 +75,9 @@ namespace parser
         Vec3f position;
         Vec3f gaze;
         Vec3f up;
+        Vec3f right;
+        Vec3f topleft;
+        Vec3f halfpixelR, halfpixelD;
         Vec4f near_plane;
         float near_distance;
         int image_width, image_height;

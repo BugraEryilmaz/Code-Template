@@ -71,6 +71,17 @@ double ray_sphere_intersect(Ray &ray, Sphere &sphere, Scene &scene) {
     return -1;
 }
 
+Ray Generate(Camera &camera, int i, int j) {
+    Vec3f current;
+    Ray ret;
+    
+    current = camera.topleft + camera.halfpixelD*(2*i+1) + camera.halfpixelR*(2*j+1);
+
+    ret.dir = current - camera.position;
+    ret.start = camera.position;
+    return ret;
+}
+
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
@@ -85,18 +96,16 @@ int main(int argc, char* argv[])
     // code here to produce the desired image.
 
     // test values
-    
-    Ray ray;
-    ray.dir.x=0;
-    ray.dir.y=0;
-    ray.dir.z=1;
-    ray.start.x=0;
-    ray.start.y=0;
-    ray.start.z=0;
-    Sphere triangle;
-    triangle.center_vertex_id=0;
-    triangle.radius=1;
-    std::cout << ray_sphere_intersect(ray, triangle, scene)<<std::endl;
+    std::cout<<"Camera topleft ("<<scene.cameras[0].topleft.x<<", "<<scene.cameras[0].topleft.y<<", "<<scene.cameras[0].topleft.z<<")\n\n\n ";
+    std::cout<<"Camera halfpixelR ("<<scene.cameras[0].halfpixelR.x<<", "<<scene.cameras[0].halfpixelR.y<<", "<<scene.cameras[0].halfpixelR.z<<")\n\n\n ";
+    std::cout<<"Camera halfpixelD ("<<scene.cameras[0].halfpixelD.x<<", "<<scene.cameras[0].halfpixelD.y<<", "<<scene.cameras[0].halfpixelD.z<<")\n\n\n ";
+    for (int i=0;i<10;i++) {
+        for (int j=0;j<10;j++) {
+            Ray test=Generate(scene.cameras[0], i, j);
+            std::cout<< "Ray start (" << test.start.x <<", " << test.start.y <<", " << test.start.z <<")\n";
+            std::cout<< "Ray end (" << test.dir.x <<", " << test.dir.y <<", " << test.dir.z <<")\n\n\n\n";
+        }
+    }
 
 /*
     const RGB BAR_COLOR[8] =

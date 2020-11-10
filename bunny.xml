@@ -7,12 +7,12 @@
 
     <Cameras>
         <Camera id="1">
-            <Position>-0.02 -0.05 1.5</Position>
+            <Position>0 0 0</Position>
             <Gaze>0 0 -1</Gaze>
             <Up>0 1 0</Up>
             <NearPlane>-0.1 0.1 0.0 0.2</NearPlane>
             <NearDistance>1</NearDistance>
-            <ImageResolution>512 512</ImageResolution>
+            <ImageResolution>10 10</ImageResolution>
             <NumSamples>1</NumSamples>
             <ImageName>bunny.ppm</ImageName>
         </Camera>

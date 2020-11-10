@@ -2,7 +2,7 @@
 
 - [x]  Intersection test with triangle
 - [x]  Intersection test with sphere
-- [ ]  Ray generation for pixel (i,j)
+- [x]  Ray generation for pixel (i,j)
 - [ ]  Color calculation for Ray, intersect point, triangle/sphere
     -   [ ] Ambient component calculation
     -   [ ] Shadow calculation
