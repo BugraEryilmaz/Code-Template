@@ -166,9 +166,17 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     color.y += scene.materials[hit.materialID - 1].ambient.y;
     color.z += scene.materials[hit.materialID - 1].ambient.z;
 
-    // Calculate shadow
+    // Calculate shadow for all light
+    for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
+        PointLight& currentLight = scene.point_lights[lightNo];
 
-    // Diffuse and Specular if not in shadow
+        // Diffuse and Specular if not in shadow
+
+        unsigned char* specular = Specular(ray, hit, currentLight, scene);
+        color.x += specular[0];
+        color.y += specular[1];
+        color.z += specular[2];
+    }
 
     // Reflected component
     unsigned char* mirrorness;
