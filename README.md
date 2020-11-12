@@ -4,11 +4,11 @@
 - [x]  Intersection test with sphere
 - [x]  Ray generation for pixel (i,j)
 - [ ]  Color calculation for Ray, intersect point, triangle/sphere
-    -   [ ] Ambient component calculation
+    -   [x] Ambient component calculation
     -   [ ] Shadow calculation
     -   [ ] Diffuse component calculation
-    -   [ ] Specular component calculation
-    -   [ ] Reflected component calculation
+    -   [x] Specular component calculation
+    -   [x] Reflected component calculation
 
 # Optional
 
