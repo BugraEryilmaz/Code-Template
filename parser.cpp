@@ -9,49 +9,38 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     std::stringstream stream;
 
     auto res = file.LoadFile(filepath.c_str());
-    if (res)
-    {
+    if (res) {
         throw std::runtime_error("Error: The xml file cannot be loaded.");
     }
 
     auto root = file.FirstChild();
-    if (!root)
-    {
+    if (!root) {
         throw std::runtime_error("Error: Root is not found.");
     }
 
     //Get BackgroundColor
     auto element = root->FirstChildElement("BackgroundColor");
-    if (element)
-    {
+    if (element) {
         stream << element->GetText() << std::endl;
-    }
-    else
-    {
+    } else {
         stream << "0 0 0" << std::endl;
     }
     stream >> background_color.x >> background_color.y >> background_color.z;
 
     //Get ShadowRayEpsilon
     element = root->FirstChildElement("ShadowRayEpsilon");
-    if (element)
-    {
+    if (element) {
         stream << element->GetText() << std::endl;
-    }
-    else
-    {
+    } else {
         stream << "0.001" << std::endl;
     }
     stream >> shadow_ray_epsilon;
 
     //Get MaxRecursionDepth
     element = root->FirstChildElement("MaxRecursionDepth");
-    if (element)
-    {
+    if (element) {
         stream << element->GetText() << std::endl;
-    }
-    else
-    {
+    } else {
         stream << "0" << std::endl;
     }
     stream >> max_recursion_depth;
@@ -60,8 +49,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("Cameras");
     element = element->FirstChildElement("Camera");
     Camera camera;
-    while (element)
-    {
+    while (element) {
         auto child = element->FirstChildElement("Position");
         stream << child->GetText() << std::endl;
         child = element->FirstChildElement("Gaze");
@@ -95,16 +83,14 @@ void parser::Scene::loadFromXml(const std::string& filepath)
 
         // Calculate topleft
 
-        camera.topleft = camera.position + camera.gaze * camera.near_distance + camera.up * camera.near_plane.w +camera.right * camera.near_plane.x;
+        camera.topleft = camera.position + camera.gaze * camera.near_distance + camera.up * camera.near_plane.w + camera.right * camera.near_plane.x;
         // middle = camera.position + camera.gaze * camera.near_distance;
         // topleft = middle + camera.up * t + camera.right * l;
 
         // Calculate half pixels
 
-        camera.halfpixelD = camera.up * ((camera.near_plane.z - camera.near_plane.w) / (2*camera.image_height));
-        camera.halfpixelR = camera.right * ((camera.near_plane.y - camera.near_plane.x) / (2*camera.image_width));
-
-
+        camera.halfpixelD = camera.up * ((camera.near_plane.z - camera.near_plane.w) / (2 * camera.image_height));
+        camera.halfpixelR = camera.right * ((camera.near_plane.y - camera.near_plane.x) / (2 * camera.image_width));
 
         cameras.push_back(camera);
         element = element->NextSiblingElement("Camera");
@@ -117,8 +103,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
     element = element->FirstChildElement("PointLight");
     PointLight point_light;
-    while (element)
-    {
+    while (element) {
         child = element->FirstChildElement("Position");
         stream << child->GetText() << std::endl;
         child = element->FirstChildElement("Intensity");
@@ -135,8 +120,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("Materials");
     element = element->FirstChildElement("Material");
     Material material;
-    while (element)
-    {
+    while (element) {
         child = element->FirstChildElement("AmbientReflectance");
         stream << child->GetText() << std::endl;
         child = element->FirstChildElement("DiffuseReflectance");
@@ -162,8 +146,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("VertexData");
     stream << element->GetText() << std::endl;
     Vec3f vertex;
-    while (!(stream >> vertex.x).eof())
-    {
+    while (!(stream >> vertex.x).eof()) {
         stream >> vertex.y >> vertex.z;
         vertex_data.push_back(vertex);
     }
@@ -173,8 +156,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("Objects");
     element = element->FirstChildElement("Mesh");
     Mesh mesh;
-    while (element)
-    {
+    while (element) {
         child = element->FirstChildElement("Material");
         stream << child->GetText() << std::endl;
         stream >> mesh.material_id;
@@ -182,8 +164,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         child = element->FirstChildElement("Faces");
         stream << child->GetText() << std::endl;
         Face face;
-        while (!(stream >> face.v0_id).eof())
-        {
+        while (!(stream >> face.v0_id).eof()) {
             stream >> face.v1_id >> face.v2_id;
             mesh.faces.push_back(face);
         }
@@ -199,8 +180,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("Objects");
     element = element->FirstChildElement("Triangle");
     Triangle triangle;
-    while (element)
-    {
+    while (element) {
         child = element->FirstChildElement("Material");
         stream << child->GetText() << std::endl;
         stream >> triangle.material_id;
@@ -217,8 +197,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     element = root->FirstChildElement("Objects");
     element = element->FirstChildElement("Sphere");
     Sphere sphere;
-    while (element)
-    {
+    while (element) {
         child = element->FirstChildElement("Material");
         stream << child->GetText() << std::endl;
         stream >> sphere.material_id;
