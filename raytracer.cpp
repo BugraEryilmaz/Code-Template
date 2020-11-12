@@ -176,6 +176,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         color.x += specular[0];
         color.y += specular[1];
         color.z += specular[2];
+        delete[] specular;
     }
 
     // Reflected component
@@ -190,6 +191,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         color.x += mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x;
         color.y += mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y;
         color.z += mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z;
+        delete[] mirrorness;
     }
 
     // Rounding and clipping
