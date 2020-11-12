@@ -166,6 +166,10 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         Face face;
         while (!(stream >> face.v0_id).eof()) {
             stream >> face.v1_id >> face.v2_id;
+            Vec3f triLine1, triLine2;
+            triLine1 = vertex_data[face.v1_id] - vertex_data[face.v0_id];
+            triLine2 = vertex_data[face.v2_id] - vertex_data[face.v1_id];
+            face.normal = triLine1.cross(triLine2);
             mesh.faces.push_back(face);
         }
         stream.clear();
@@ -189,6 +193,10 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         stream << child->GetText() << std::endl;
         stream >> triangle.indices.v0_id >> triangle.indices.v1_id >> triangle.indices.v2_id;
 
+        Vec3f triLine1, triLine2;
+        triLine1 = vertex_data[triangle.indices.v1_id] - vertex_data[triangle.indices.v0_id];
+        triLine2 = vertex_data[triangle.indices.v2_id] - vertex_data[triangle.indices.v1_id];
+        triangle.indices.normal = triLine1.cross(triLine2);
         triangles.push_back(triangle);
         element = element->NextSiblingElement("Triangle");
     }

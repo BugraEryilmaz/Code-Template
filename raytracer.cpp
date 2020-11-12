@@ -11,13 +11,19 @@ struct Ray {
     Vec3f start, dir;
 };
 
+struct Hit {
+    bool hitOccur;
+    int materialID;
+    Vec3f intersectPoint, normal;
+};
+
 double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 {
 #define e (ray.start)
 #define d (ray.dir)
-#define a (scene.vertex_data[triangle.v0_id])
-#define b (scene.vertex_data[triangle.v1_id])
-#define c (scene.vertex_data[triangle.v2_id])
+#define a (scene.vertex_data[triangle.v0_id - 1])
+#define b (scene.vertex_data[triangle.v1_id - 1])
+#define c (scene.vertex_data[triangle.v2_id - 1])
     double det, t, beta, gamma;
     det = ((-d.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (-d.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (-d.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)));
     t = ((e.x - a.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (e.y - a.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (e.z - a.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))) / det;
@@ -40,7 +46,7 @@ double ray_sphere_intersect(Ray& ray, Sphere& sphere, Scene& scene)
 {
 
 #define r (sphere.radius)
-#define c (scene.vertex_data[sphere.center_vertex_id])
+#define c (scene.vertex_data[sphere.center_vertex_id - 1])
 #define e (ray.start)
 #define d (ray.dir)
 
@@ -74,23 +80,109 @@ Ray Generate(Camera& camera, int i, int j)
     return ret;
 }
 
-unsigned char* CalculateColor(Ray& ray, Scene& scene)
+Hit ClosestHit(Ray& ray, Scene& scene)
+{
+    Hit ret;
+    double t, tmin = __DBL_MAX__;
+    ret.hitOccur = false;
+    // Intersection tests
+    //  Mesh intersect
+    for (int meshID = 0; meshID < scene.meshes.size(); meshID++) {
+        Mesh& mesh = scene.meshes[meshID];
+        for (int faceID = 0; faceID < mesh.faces.size(); faceID++) {
+            Face& triangle = mesh.faces[faceID];
+            t = ray_triangle_intersect(ray, triangle, scene);
+            if (t >= 0 && t < tmin) {
+                tmin = t;
+                ret.intersectPoint = ray.start + ray.dir * t;
+                ret.normal = triangle.normal;
+                ret.materialID = mesh.material_id;
+                ret.hitOccur = true;
+            }
+        }
+    }
+    //  Triangle intersect
+    for (int triangleID = 0; triangleID < scene.triangles.size(); triangleID++) {
+        Face& triangle = scene.triangles[triangleID].indices;
+        t = ray_triangle_intersect(ray, triangle, scene);
+        if (t >= 0 && t < tmin) {
+            tmin = t;
+            ret.intersectPoint = ray.start + ray.dir * t;
+            ret.normal = triangle.normal;
+            ret.materialID = scene.triangles[triangleID - 1].material_id;
+            ret.hitOccur = true;
+        }
+    }
+    //  Sphere intersect
+    for (int sphereID = 0; sphereID < scene.spheres.size(); sphereID++) {
+        Sphere& sphere = scene.spheres[sphereID];
+        t = ray_sphere_intersect(ray, sphere, scene);
+        if (t >= 0 && t < tmin) {
+            tmin = t;
+            ret.intersectPoint = ray.start + ray.dir * t;
+            ret.normal = (ret.intersectPoint - scene.vertex_data[sphere.center_vertex_id - 1]).normalize();
+            ret.materialID = sphere.material_id;
+            ret.hitOccur = true;
+        }
+    }
+    return ret;
+}
+
+unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
+{
+    Vec3f toSource, halfWay, toLight;
+    toSource = (ray.start - hit.intersectPoint).normalize();
+    toLight = (light.position - hit.intersectPoint);
+    double dSquare = toLight.dot(toLight);
+    toLight = toLight.normalize();
+    halfWay = (toSource + toLight).normalize();
+    unsigned char* ret = new unsigned char[3];
+    ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
+    ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
+    ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
+    return ret;
+}
+
+unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 {
     Vec3f color = { 0, 0, 0 };
     unsigned char* ret = new unsigned char[3];
-    double tmin=__DBL_MAX__, t;
-    // Intersection tests
-    //  Mesh intersect
-    for (int meshID=0; meshID<scene.meshes.size(); meshID++) {
-        
+    ret[0] = ret[1] = ret[2] = 0;
+    if (iterationCount < 0)
+        return ret;
+    Hit hit = ClosestHit(ray, scene);
+    if (!hit.hitOccur) {
+        color.x = scene.background_color.x;
+        color.y = scene.background_color.y;
+        color.z = scene.background_color.z;
+        // Rounding and clipping
+        ret[0] = MIN(round(color.x), 255);
+        ret[1] = MIN(round(color.y), 255);
+        ret[2] = MIN(round(color.z), 255);
+        return ret;
     }
     // Ambient color
+    color.x += scene.materials[hit.materialID - 1].ambient.x;
+    color.y += scene.materials[hit.materialID - 1].ambient.y;
+    color.z += scene.materials[hit.materialID - 1].ambient.z;
 
     // Calculate shadow
 
     // Diffuse and Specular if not in shadow
 
     // Reflected component
+    unsigned char* mirrorness;
+    if (scene.materials[hit.materialID - 1].mirror.x || scene.materials[hit.materialID - 1].mirror.y || scene.materials[hit.materialID - 1].mirror.z) {
+        Ray newRay, toSource;
+        toSource.dir = (ray.start - hit.intersectPoint).normalize();
+        newRay.dir = toSource.dir * 2 * hit.normal.dot(toSource.dir) - toSource.dir;
+        newRay.start = hit.intersectPoint + newRay.dir * (scene.shadow_ray_epsilon / sqrt(newRay.dir.dot(newRay.dir)));
+        mirrorness = CalculateColor(newRay, iterationCount - 1, scene);
+
+        color.x += mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x;
+        color.y += mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y;
+        color.z += mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z;
+    }
 
     // Rounding and clipping
     ret[0] = MIN(round(color.x), 255);
@@ -118,10 +210,11 @@ int main(int argc, char* argv[])
         Camera& camera = scene.cameras[cam];
         unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
         int index = 0;
+        Ray currentRay;
         for (int i = 0; i < camera.image_height; i++) {
             for (int j = 0; j < camera.image_width; j++) {
-                Ray currentRay = Generate(camera, i, j);
-                unsigned char* color = CalculateColor(currentRay, scene);
+                currentRay = Generate(camera, i, j);
+                unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
                 image[index++] = color[0];
                 image[index++] = color[1];
                 image[index++] = color[2];
@@ -130,7 +223,6 @@ int main(int argc, char* argv[])
         }
         write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
     }
-
     /*
     const RGB BAR_COLOR[8] =
     {
