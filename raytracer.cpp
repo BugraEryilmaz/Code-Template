@@ -141,7 +141,44 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
     ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
     return ret;
+   
 }
+
+unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
+{
+    Vec3f toSource, toLight;
+    toSource = (ray.start - hit.intersectPoint).normalize();
+    toLight = (light.position - hit.intersectPoint);
+    double dSquare = toLight.dot(toLight);
+    toLight = toLight.normalize();
+    unsigned char* ret = new unsigned char[3];
+    ret[0] = scene.materials[hit.materialID - 1].diffuse.x *((toLight.dot(hit.normal)) * light.intensity.x / dSquare;
+    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * ((toLight.dot(hit.normal)) * light.intensity.y / dSquare;
+    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * ((toLight.dot(hit.normal)) * light.intensity.z / dSquare;
+     
+    return ret;
+}
+
+bool ShadowCheck(Hit& hit, PointLight& light,  Scene& Scene)
+{
+    toLight = (light.position - hit.intersectPoint);
+    Hit hitwithepsilon;
+    hitwithepsilon.intersectPoint = (hit.intersectPoint + scene.shadow_ray_epsilon*toLight);
+    toLight=(light.position - hitwithepsilon.intersectPoint);
+    double d = toLight.dot(toLight);
+    Hit hitsh = ClosestHit(toLight,scene)
+    if(hitsh.hitOccur){
+        toShadow = (light.position - hitsh.intersectPoint);
+        double ds = toShadow.dot(toShadow);
+        if(ds<d)
+            return true;
+        else 
+            return false;
+     }
+    else 
+        return false;
+}
+
 
 unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 {
@@ -170,14 +207,25 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
         PointLight& currentLight = scene.point_lights[lightNo];
 
+        if(ShadowCheck(hit, currentLight, scene))
+            continue;
+   
         // Diffuse and Specular if not in shadow
-
+        
         unsigned char* specular = Specular(ray, hit, currentLight, scene);
         color.x += specular[0];
         color.y += specular[1];
         color.z += specular[2];
         delete[] specular;
+
+        unsigned char* diffuse = Diffuse(ray, hit, currentLight, scene);
+        color.x += diffuse[0];
+        color.y += diffuse[1];
+        color.z += diffuse[2];
+        delete[] diffuse;
+
     }
+
 
     // Reflected component
     unsigned char* mirrorness;

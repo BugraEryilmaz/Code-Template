@@ -145,7 +145,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     //Get VertexData
     element = root->FirstChildElement("VertexData");
     stream << element->GetText() << std::endl;
-    Vec3f vertex;
+    Vec3f vertex; 
     while (!(stream >> vertex.x).eof()) {
         stream >> vertex.y >> vertex.z;
         vertex_data.push_back(vertex);
