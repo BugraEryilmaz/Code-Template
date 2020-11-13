@@ -137,9 +137,12 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     toLight = toLight.normalize();
     halfWay = (toSource + toLight).normalize();
     unsigned char* ret = new unsigned char[3];
-    ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
-    ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
-    ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
+    temp = halfWay.dot(hit.normal);
+    if (temp < 0)
+        temp = 0;
+    ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
+    ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
+    ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
     return ret;
 }
 
@@ -151,9 +154,12 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     unsigned char* ret = new unsigned char[3];
-    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * (toLight.dot(hit.normal)) * light.intensity.x / dSquare;
-    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * (toLight.dot(hit.normal)) * light.intensity.y / dSquare;
-    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * (toLight.dot(hit.normal)) * light.intensity.z / dSquare;
+    temp = toLight.dot(hit.normal);
+    if (temp < 0)
+        temp = 0;
+    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * light.intensity.x / dSquare;
+    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * temp * light.intensity.y / dSquare;
+    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * temp * light.intensity.z / dSquare;
 
     return ret;
 }
