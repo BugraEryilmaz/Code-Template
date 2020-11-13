@@ -145,7 +145,7 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     //Get VertexData
     element = root->FirstChildElement("VertexData");
     stream << element->GetText() << std::endl;
-    Vec3f vertex; 
+    Vec3f vertex;
     while (!(stream >> vertex.x).eof()) {
         stream >> vertex.y >> vertex.z;
         vertex_data.push_back(vertex);
@@ -167,9 +167,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         while (!(stream >> face.v0_id).eof()) {
             stream >> face.v1_id >> face.v2_id;
             Vec3f triLine1, triLine2;
-            triLine1 = vertex_data[face.v1_id] - vertex_data[face.v0_id];
-            triLine2 = vertex_data[face.v2_id] - vertex_data[face.v1_id];
-            face.normal = triLine1.cross(triLine2);
+            triLine1 = vertex_data[face.v1_id - 1] - vertex_data[face.v0_id - 1];
+            triLine2 = vertex_data[face.v2_id - 1] - vertex_data[face.v1_id - 1];
+            face.normal = triLine1.cross(triLine2).normalize();
             mesh.faces.push_back(face);
         }
         stream.clear();
@@ -194,9 +194,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         stream >> triangle.indices.v0_id >> triangle.indices.v1_id >> triangle.indices.v2_id;
 
         Vec3f triLine1, triLine2;
-        triLine1 = vertex_data[triangle.indices.v1_id] - vertex_data[triangle.indices.v0_id];
-        triLine2 = vertex_data[triangle.indices.v2_id] - vertex_data[triangle.indices.v1_id];
-        triangle.indices.normal = triLine1.cross(triLine2);
+        triLine1 = vertex_data[triangle.indices.v1_id - 1] - vertex_data[triangle.indices.v0_id - 1];
+        triLine2 = vertex_data[triangle.indices.v2_id - 1] - vertex_data[triangle.indices.v1_id - 1];
+        triangle.indices.normal = triLine1.cross(triLine2).normalize();
         triangles.push_back(triangle);
         element = element->NextSiblingElement("Triangle");
     }

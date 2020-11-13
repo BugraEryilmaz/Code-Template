@@ -109,7 +109,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
             ret.normal = triangle.normal;
-            ret.materialID = scene.triangles[triangleID - 1].material_id;
+            ret.materialID = scene.triangles[triangleID].material_id;
             ret.hitOccur = true;
         }
     }
@@ -141,7 +141,6 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
     ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(halfWay.dot(hit.normal), scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
     return ret;
-   
 }
 
 unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
@@ -152,10 +151,10 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     unsigned char* ret = new unsigned char[3];
-    ret[0] = scene.materials[hit.materialID - 1].diffuse.x *(toLight.dot(hit.normal)) * light.intensity.x / dSquare;
+    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * (toLight.dot(hit.normal)) * light.intensity.x / dSquare;
     ret[1] = scene.materials[hit.materialID - 1].diffuse.y * (toLight.dot(hit.normal)) * light.intensity.y / dSquare;
     ret[2] = scene.materials[hit.materialID - 1].diffuse.z * (toLight.dot(hit.normal)) * light.intensity.z / dSquare;
-     
+
     return ret;
 }
 
@@ -176,11 +175,9 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
             return true;
         else
             return false;
-    }
-    else
+    } else
         return false;
 }
-
 
 unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 {
@@ -201,19 +198,19 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         return ret;
     }
     // Ambient color
-    color.x += scene.materials[hit.materialID - 1].ambient.x;
-    color.y += scene.materials[hit.materialID - 1].ambient.y;
-    color.z += scene.materials[hit.materialID - 1].ambient.z;
+    color.x += scene.materials[hit.materialID - 1].ambient.x * scene.ambient_light.x;
+    color.y += scene.materials[hit.materialID - 1].ambient.y * scene.ambient_light.y;
+    color.z += scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z;
 
     // Calculate shadow for all light
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
         PointLight& currentLight = scene.point_lights[lightNo];
 
-        if(isShadow(hit, currentLight, scene))
+        if (isShadow(hit, currentLight, scene))
             continue;
-   
+
         // Diffuse and Specular if not in shadow
-        
+
         unsigned char* specular = Specular(ray, hit, currentLight, scene);
         color.x += specular[0];
         color.y += specular[1];
@@ -225,9 +222,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         color.y += diffuse[1];
         color.z += diffuse[2];
         delete[] diffuse;
-
     }
-
 
     // Reflected component
     unsigned char* mirrorness;
@@ -316,5 +311,3 @@ int main(int argc, char* argv[])
     write_ppm("test.ppm", image, width, height);*/
     return 0;
 }
-
-
