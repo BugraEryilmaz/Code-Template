@@ -152,21 +152,21 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     unsigned char* ret = new unsigned char[3];
-    ret[0] = scene.materials[hit.materialID - 1].diffuse.x *((toLight.dot(hit.normal)) * light.intensity.x / dSquare;
-    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * ((toLight.dot(hit.normal)) * light.intensity.y / dSquare;
-    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * ((toLight.dot(hit.normal)) * light.intensity.z / dSquare;
+    ret[0] = scene.materials[hit.materialID - 1].diffuse.x *(toLight.dot(hit.normal)) * light.intensity.x / dSquare;
+    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * (toLight.dot(hit.normal)) * light.intensity.y / dSquare;
+    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * (toLight.dot(hit.normal)) * light.intensity.z / dSquare;
      
     return ret;
 }
 
-bool isShadow(Hit& hit, PointLight& light, Scene& Scene)
+bool isShadow(Hit& hit, PointLight& light, Scene& scene)
 {
     Vec3f toLight;
     Vec3f toShadow;
-    Ray newRay
-        toLight = (light.position - hit.intersectPoint);
-    newRay.dir = toLigth;
-    newRay.start = hit.intersectPoint + scene.shadow_ray_epsilon * toLight;
+    Ray newRay;
+    toLight = (light.position - hit.intersectPoint);
+    newRay.dir = toLight;
+    newRay.start = hit.intersectPoint + newRay.dir.operator*(0.0001);
     double d = toLight.dot(toLight);
     Hit hitsh = ClosestHit(newRay, scene);
     if (hitsh.hitOccur) {
@@ -316,3 +316,5 @@ int main(int argc, char* argv[])
     write_ppm("test.ppm", image, width, height);*/
     return 0;
 }
+
+
