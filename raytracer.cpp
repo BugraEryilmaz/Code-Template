@@ -159,23 +159,25 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     return ret;
 }
 
-bool ShadowCheck(Hit& hit, PointLight& light,  Scene& Scene)
+bool isShadow(Hit& hit, PointLight& light, Scene& Scene)
 {
-    toLight = (light.position - hit.intersectPoint);
-    Hit hitwithepsilon;
-    hitwithepsilon.intersectPoint = (hit.intersectPoint + scene.shadow_ray_epsilon*toLight);
-    toLight=(light.position - hitwithepsilon.intersectPoint);
+    Vec3f toLight;
+    Vec3f toShadow;
+    Ray newRay
+        toLight = (light.position - hit.intersectPoint);
+    newRay.dir = toLigth;
+    newRay.start = hit.intersectPoint + scene.shadow_ray_epsilon * toLight;
     double d = toLight.dot(toLight);
-    Hit hitsh = ClosestHit(toLight,scene)
-    if(hitsh.hitOccur){
+    Hit hitsh = ClosestHit(newRay, scene);
+    if (hitsh.hitOccur) {
         toShadow = (light.position - hitsh.intersectPoint);
         double ds = toShadow.dot(toShadow);
-        if(ds<d)
+        if (ds < d)
             return true;
-        else 
+        else
             return false;
-     }
-    else 
+    }
+    else
         return false;
 }
 
@@ -207,7 +209,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
         PointLight& currentLight = scene.point_lights[lightNo];
 
-        if(ShadowCheck(hit, currentLight, scene))
+        if(isShadow(hit, currentLight, scene))
             continue;
    
         // Diffuse and Specular if not in shadow
