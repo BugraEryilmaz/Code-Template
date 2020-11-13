@@ -170,7 +170,7 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
     double d = toLight.dot(toLight);
     Hit hitsh = ClosestHit(newRay, scene);
     if (hitsh.hitOccur) {
-        toShadow = (light.position - hitsh.intersectPoint);
+        toShadow = (hitsh.intersectPoint - hit.intersectPoint);
         double ds = toShadow.dot(toShadow);
         if (ds < d)
             return true;
