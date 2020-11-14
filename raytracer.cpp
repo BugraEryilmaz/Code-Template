@@ -35,7 +35,7 @@ double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 #undef b
 #undef c
 
-    if (beta >= 0 && gamma >= 0 && beta + gamma <= 1 && t > 0) {
+    if (beta >= -0.0001 && gamma >= -0.0001 && beta + gamma <= 1.0001 && t > 0) {
         return t;
     }
 
@@ -57,7 +57,7 @@ double ray_sphere_intersect(Ray& ray, Sphere& sphere, Scene& scene)
 
     double delta = B * B - 4 * A * C;
 
-    if (delta >= 0 && (-B - sqrt(delta)) / (2 * A) >= 0)
+    if (delta >= 0 && (-B - sqrt(delta)) / (2 * A) >= -0.0001)
         return (-B - sqrt(delta)) / (2 * A);
 
 #undef e
@@ -92,7 +92,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
         for (int faceID = 0; faceID < mesh.faces.size(); faceID++) {
             Face& triangle = mesh.faces[faceID];
             t = ray_triangle_intersect(ray, triangle, scene);
-            if (t >= 0 && t < tmin) {
+            if (t >= -0.0001 && t < tmin) {
                 tmin = t;
                 ret.intersectPoint = ray.start + ray.dir * t;
                 ret.normal = triangle.normal;
@@ -105,7 +105,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     for (int triangleID = 0; triangleID < scene.triangles.size(); triangleID++) {
         Face& triangle = scene.triangles[triangleID].indices;
         t = ray_triangle_intersect(ray, triangle, scene);
-        if (t >= 0 && t < tmin) {
+        if (t >= -0.0001 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
             ret.normal = triangle.normal;
@@ -117,7 +117,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     for (int sphereID = 0; sphereID < scene.spheres.size(); sphereID++) {
         Sphere& sphere = scene.spheres[sphereID];
         t = ray_sphere_intersect(ray, sphere, scene);
-        if (t >= 0 && t < tmin) {
+        if (t >= -0.0001 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
             ret.normal = (ret.intersectPoint - scene.vertex_data[sphere.center_vertex_id - 1]).normalize();
@@ -137,7 +137,7 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     toLight = toLight.normalize();
     halfWay = (toSource + toLight).normalize();
     unsigned char* ret = new unsigned char[3];
-    temp = halfWay.dot(hit.normal);
+    double temp = halfWay.dot(hit.normal);
     if (temp < 0)
         temp = 0;
     ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
@@ -154,7 +154,7 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     unsigned char* ret = new unsigned char[3];
-    temp = toLight.dot(hit.normal);
+    double temp = toLight.dot(hit.normal);
     if (temp < 0)
         temp = 0;
     ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * light.intensity.x / dSquare;
@@ -171,7 +171,7 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
     Ray newRay;
     toLight = (light.position - hit.intersectPoint);
     newRay.dir = toLight;
-    newRay.start = hit.intersectPoint + newRay.dir.operator*(0.0001);
+    newRay.start = hit.intersectPoint + newRay.dir * (scene.shadow_ray_epsilon / sqrt(newRay.dir.dot(newRay.dir)));
     double d = toLight.dot(toLight);
     Hit hitsh = ClosestHit(newRay, scene);
     if (hitsh.hitOccur) {
