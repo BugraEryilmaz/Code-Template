@@ -60,8 +60,11 @@ double ray_sphere_intersect(Ray& ray, Sphere& sphere, Scene& scene)
 
     double delta = B * B - 4 * A * C;
 
-    if (delta >= 0 && (-B - sqrt(delta)) / (2 * A) >= 0)
-        return (-B - sqrt(delta)) / (2 * A);
+    if (delta >= 0) {
+        double mindis = MIN((-B - sqrt(delta)) / (2 * A), (-B + sqrt(delta)) / (2 * A));
+        double maxdis = MAX((-B - sqrt(delta)) / (2 * A), (-B + sqrt(delta)) / (2 * A));
+        return (mindis > 0 ? mindis : maxdis);
+    }
 
 #undef e
 #undef d
@@ -98,7 +101,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             if (t >= 0 && t < tmin) {
                 tmin = t;
                 ret.intersectPoint = ray.start + ray.dir * t;
-                ret.normal = triangle.normal.normalize();
+                ret.normal = triangle.normal;
                 ret.materialID = mesh.material_id;
                 ret.hitOccur = true;
             }
@@ -111,7 +114,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
         if (t >= 0 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
-            ret.normal = triangle.normal.normalize();
+            ret.normal = triangle.normal;
             ret.materialID = scene.triangles[triangleID].material_id;
             ret.hitOccur = true;
         }
@@ -131,7 +134,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     return ret;
 }
 
-unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
+double* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
 {
     Vec3f toSource, halfWay, toLight;
     toSource = (ray.start - hit.intersectPoint).normalize();
@@ -139,8 +142,7 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     halfWay = (toSource + toLight).normalize();
-    unsigned char* ret = new unsigned char[3];
-    hit.normal = hit.normal.normalize();
+    double* ret = new double[3];
     double temp = halfWay.dot(hit.normal);
     ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
     ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
@@ -148,16 +150,14 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     return ret;
 }
 
-unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
+double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
 {
     Vec3f toSource, toLight;
-    toSource = (ray.start - hit.intersectPoint).normalize();
     toLight = (light.position - hit.intersectPoint);
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
-    unsigned char* ret = new unsigned char[3];
-    hit.normal = hit.normal.normalize();
-    double temp = abs(toLight.dot(hit.normal));
+    double* ret = new double[3];
+    double temp = MAX(toLight.dot(hit.normal), 0);
     ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * (light.intensity.x / dSquare);
     ret[1] = scene.materials[hit.materialID - 1].diffuse.y * temp * (light.intensity.y / dSquare);
     ret[2] = scene.materials[hit.materialID - 1].diffuse.z * temp * (light.intensity.z / dSquare);
@@ -201,9 +201,9 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         return ret;
     }
     // Ambient color
-    color.x = clip(color.x + scene.materials[hit.materialID - 1].ambient.x * scene.ambient_light.x);
-    color.y = clip(color.y + scene.materials[hit.materialID - 1].ambient.y * scene.ambient_light.y);
-    color.z = clip(color.z + scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z);
+    color.x = color.x + scene.materials[hit.materialID - 1].ambient.x * scene.ambient_light.x;
+    color.y = color.y + scene.materials[hit.materialID - 1].ambient.y * scene.ambient_light.y;
+    color.z = color.z + scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z;
 
     // Calculate shadow for all light
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
@@ -214,16 +214,16 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 
         // Diffuse and Specular if not in shadow
 
-        unsigned char* specular = Specular(ray, hit, currentLight, scene);
-        color.x = clip(color.x + specular[0]);
-        color.y = clip(color.y + specular[1]);
-        color.z = clip(color.z + specular[2]);
+        double* specular = Specular(ray, hit, currentLight, scene);
+        color.x = (color.x + specular[0]);
+        color.y = (color.y + specular[1]);
+        color.z = (color.z + specular[2]);
         delete[] specular;
 
-        unsigned char* diffuse = Diffuse(ray, hit, currentLight, scene);
-        color.x = clip(color.x + diffuse[0]);
-        color.y = clip(color.y + diffuse[1]);
-        color.z = clip(color.z + diffuse[2]);
+        double* diffuse = Diffuse(ray, hit, currentLight, scene);
+        color.x = (color.x + diffuse[0]);
+        color.y = (color.y + diffuse[1]);
+        color.z = (color.z + diffuse[2]);
         delete[] diffuse;
     }
 
@@ -232,20 +232,20 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     if (scene.materials[hit.materialID - 1].mirror.x || scene.materials[hit.materialID - 1].mirror.y || scene.materials[hit.materialID - 1].mirror.z) {
         Ray newRay, toSource;
         toSource.dir = (ray.start - hit.intersectPoint).normalize();
-        newRay.dir = toSource.dir * 2 * hit.normal.dot(toSource.dir) - toSource.dir;
-        newRay.start = hit.intersectPoint + newRay.dir * (scene.shadow_ray_epsilon / sqrt(newRay.dir.dot(newRay.dir)));
+        newRay.dir = hit.normal * 2 * hit.normal.dot(toSource.dir) - toSource.dir;
+        newRay.start = hit.intersectPoint + hit.normal * (scene.shadow_ray_epsilon);
         mirrorness = CalculateColor(newRay, iterationCount - 1, scene);
 
-        color.x = clip(color.x + mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x);
-        color.y = clip(color.y + mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y);
-        color.z = clip(color.z + mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z);
+        color.x = (color.x + mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x);
+        color.y = (color.y + mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y);
+        color.z = (color.z + mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z);
         delete[] mirrorness;
     }
 
     // Rounding and clipping
-    ret[0] = MIN(round(color.x), 255);
-    ret[1] = MIN(round(color.y), 255);
-    ret[2] = MIN(round(color.z), 255);
+    ret[0] = clip(color.x);
+    ret[1] = clip(color.y);
+    ret[2] = clip(color.z);
     return ret;
 }
 

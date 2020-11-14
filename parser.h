@@ -6,6 +6,7 @@
 #include <vector>
 
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 namespace parser {
 //Notice that all the structures are as simple as possible
