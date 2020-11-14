@@ -5,14 +5,13 @@
 #include <string>
 #include <vector>
 
-
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 
 namespace parser {
 //Notice that all the structures are as simple as possible
 //so that you are not enforced to adopt any style or design.
 struct Vec3f {
-    float x, y, z;
+    double x, y, z;
     Vec3f operator+(const Vec3f& rhs)
     {
         Vec3f ret;

@@ -1,11 +1,14 @@
 #include "parser.h"
 #include "ppm.h"
+#include <chrono>
 #include <iostream>
 #include <math.h>
 
 using namespace parser;
 
 typedef unsigned char RGB[3];
+
+#define clip(a) MIN(round(a), 255)
 
 struct Ray {
     Vec3f start, dir;
@@ -35,7 +38,7 @@ double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 #undef b
 #undef c
 
-    if (beta >= -0.0001 && gamma >= -0.0001 && beta + gamma <= 1.0001 && t > 0) {
+    if (beta >= 0 && gamma >= 0 && beta + gamma <= 1 && t > 0) {
         return t;
     }
 
@@ -57,7 +60,7 @@ double ray_sphere_intersect(Ray& ray, Sphere& sphere, Scene& scene)
 
     double delta = B * B - 4 * A * C;
 
-    if (delta >= 0 && (-B - sqrt(delta)) / (2 * A) >= -0.0001)
+    if (delta >= 0 && (-B - sqrt(delta)) / (2 * A) >= 0)
         return (-B - sqrt(delta)) / (2 * A);
 
 #undef e
@@ -92,10 +95,10 @@ Hit ClosestHit(Ray& ray, Scene& scene)
         for (int faceID = 0; faceID < mesh.faces.size(); faceID++) {
             Face& triangle = mesh.faces[faceID];
             t = ray_triangle_intersect(ray, triangle, scene);
-            if (t >= -0.0001 && t < tmin) {
+            if (t >= 0 && t < tmin) {
                 tmin = t;
                 ret.intersectPoint = ray.start + ray.dir * t;
-                ret.normal = triangle.normal;
+                ret.normal = triangle.normal.normalize();
                 ret.materialID = mesh.material_id;
                 ret.hitOccur = true;
             }
@@ -105,10 +108,10 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     for (int triangleID = 0; triangleID < scene.triangles.size(); triangleID++) {
         Face& triangle = scene.triangles[triangleID].indices;
         t = ray_triangle_intersect(ray, triangle, scene);
-        if (t >= -0.0001 && t < tmin) {
+        if (t >= 0 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
-            ret.normal = triangle.normal;
+            ret.normal = triangle.normal.normalize();
             ret.materialID = scene.triangles[triangleID].material_id;
             ret.hitOccur = true;
         }
@@ -117,7 +120,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     for (int sphereID = 0; sphereID < scene.spheres.size(); sphereID++) {
         Sphere& sphere = scene.spheres[sphereID];
         t = ray_sphere_intersect(ray, sphere, scene);
-        if (t >= -0.0001 && t < tmin) {
+        if (t >= 0 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
             ret.normal = (ret.intersectPoint - scene.vertex_data[sphere.center_vertex_id - 1]).normalize();
@@ -137,9 +140,8 @@ unsigned char* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     toLight = toLight.normalize();
     halfWay = (toSource + toLight).normalize();
     unsigned char* ret = new unsigned char[3];
+    hit.normal = hit.normal.normalize();
     double temp = halfWay.dot(hit.normal);
-    if (temp < 0)
-        temp = 0;
     ret[0] = scene.materials[hit.materialID - 1].specular.x * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.x / dSquare;
     ret[1] = scene.materials[hit.materialID - 1].specular.y * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.y / dSquare;
     ret[2] = scene.materials[hit.materialID - 1].specular.z * pow(temp, scene.materials[hit.materialID - 1].phong_exponent) * light.intensity.z / dSquare;
@@ -154,12 +156,11 @@ unsigned char* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     double dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     unsigned char* ret = new unsigned char[3];
-    double temp = toLight.dot(hit.normal);
-    if (temp < 0)
-        temp = 0;
-    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * light.intensity.x / dSquare;
-    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * temp * light.intensity.y / dSquare;
-    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * temp * light.intensity.z / dSquare;
+    hit.normal = hit.normal.normalize();
+    double temp = abs(toLight.dot(hit.normal));
+    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * (light.intensity.x / dSquare);
+    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * temp * (light.intensity.y / dSquare);
+    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * temp * (light.intensity.z / dSquare);
 
     return ret;
 }
@@ -171,7 +172,7 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
     Ray newRay;
     toLight = (light.position - hit.intersectPoint);
     newRay.dir = toLight;
-    newRay.start = hit.intersectPoint + newRay.dir * (scene.shadow_ray_epsilon / sqrt(newRay.dir.dot(newRay.dir)));
+    newRay.start = hit.intersectPoint + hit.normal * scene.shadow_ray_epsilon;
     double d = toLight.dot(toLight);
     Hit hitsh = ClosestHit(newRay, scene);
     if (hitsh.hitOccur) {
@@ -194,19 +195,15 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         return ret;
     Hit hit = ClosestHit(ray, scene);
     if (!hit.hitOccur) {
-        color.x = scene.background_color.x;
-        color.y = scene.background_color.y;
-        color.z = scene.background_color.z;
-        // Rounding and clipping
-        ret[0] = MIN(round(color.x), 255);
-        ret[1] = MIN(round(color.y), 255);
-        ret[2] = MIN(round(color.z), 255);
+        color.x = clip(scene.background_color.x);
+        color.y = clip(scene.background_color.y);
+        color.z = clip(scene.background_color.z);
         return ret;
     }
     // Ambient color
-    color.x += scene.materials[hit.materialID - 1].ambient.x * scene.ambient_light.x;
-    color.y += scene.materials[hit.materialID - 1].ambient.y * scene.ambient_light.y;
-    color.z += scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z;
+    color.x = clip(color.x + scene.materials[hit.materialID - 1].ambient.x * scene.ambient_light.x);
+    color.y = clip(color.y + scene.materials[hit.materialID - 1].ambient.y * scene.ambient_light.y);
+    color.z = clip(color.z + scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z);
 
     // Calculate shadow for all light
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
@@ -218,15 +215,15 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         // Diffuse and Specular if not in shadow
 
         unsigned char* specular = Specular(ray, hit, currentLight, scene);
-        color.x += specular[0];
-        color.y += specular[1];
-        color.z += specular[2];
+        color.x = clip(color.x + specular[0]);
+        color.y = clip(color.y + specular[1]);
+        color.z = clip(color.z + specular[2]);
         delete[] specular;
 
         unsigned char* diffuse = Diffuse(ray, hit, currentLight, scene);
-        color.x += diffuse[0];
-        color.y += diffuse[1];
-        color.z += diffuse[2];
+        color.x = clip(color.x + diffuse[0]);
+        color.y = clip(color.y + diffuse[1]);
+        color.z = clip(color.z + diffuse[2]);
         delete[] diffuse;
     }
 
@@ -239,9 +236,9 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         newRay.start = hit.intersectPoint + newRay.dir * (scene.shadow_ray_epsilon / sqrt(newRay.dir.dot(newRay.dir)));
         mirrorness = CalculateColor(newRay, iterationCount - 1, scene);
 
-        color.x += mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x;
-        color.y += mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y;
-        color.z += mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z;
+        color.x = clip(color.x + mirrorness[0] * scene.materials[hit.materialID - 1].mirror.x);
+        color.y = clip(color.y + mirrorness[1] * scene.materials[hit.materialID - 1].mirror.y);
+        color.z = clip(color.z + mirrorness[2] * scene.materials[hit.materialID - 1].mirror.z);
         delete[] mirrorness;
     }
 
@@ -255,65 +252,38 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
-    Scene scene;
-    scene.loadFromXml(argv[1]);
 
-    // The code below creates a test pattern and writes
-    // it to a PPM file to demonstrate the usage of the
-    // ppm_write function.
-    //
-    // Normally, you would be running your ray tracing
-    // code here to produce the desired image.
+    for (int inID = 1; inID < argc; inID++) {
 
-    // test values
+        Scene scene;
+        scene.loadFromXml(argv[inID]);
 
-    for (int cam = 0; cam < scene.cameras.size(); cam++) {
-        Camera& camera = scene.cameras[cam];
-        unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
-        int index = 0;
-        Ray currentRay;
-        for (int i = 0; i < camera.image_height; i++) {
-            for (int j = 0; j < camera.image_width; j++) {
-                currentRay = Generate(camera, i, j);
-                unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
-                image[index++] = color[0];
-                image[index++] = color[1];
-                image[index++] = color[2];
-                delete[] color;
+        // test values
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        for (int cam = 0; cam < scene.cameras.size(); cam++) {
+            Camera& camera = scene.cameras[cam];
+            unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
+            int index = 0;
+            Ray currentRay;
+            for (int i = 0; i < camera.image_height; i++) {
+                for (int j = 0; j < camera.image_width; j++) {
+                    currentRay = Generate(camera, i, j);
+                    unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
+                    image[index++] = color[0];
+                    image[index++] = color[1];
+                    image[index++] = color[2];
+                    delete[] color;
+                }
             }
+            write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
+            delete[] image;
         }
-        write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        std::cout << argv[inID] << std::endl;
+        std::cout << duration.count() << std::endl;
     }
-    /*
-    const RGB BAR_COLOR[8] =
-    {
-        { 255, 255, 255 },  // 100% White
-        { 255, 255,   0 },  // Yellow
-        {   0, 255, 255 },  // Cyan
-        {   0, 255,   0 },  // Green
-        { 255,   0, 255 },  // Magenta
-        { 255,   0,   0 },  // Red
-        {   0,   0, 255 },  // Blue
-        {   0,   0,   0 },  // Black
-    };
-
-    int width = 640, height = 480;
-    int columnWidth = width / 8;
-
-    unsigned char* image = new unsigned char [width * height * 3];
-
-    int i = 0;
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            int colIdx = x / columnWidth;
-            image[i++] = BAR_COLOR[colIdx][0];
-            image[i++] = BAR_COLOR[colIdx][1];
-            image[i++] = BAR_COLOR[colIdx][2];
-        }
-    }
-
-    write_ppm("test.ppm", image, width, height);*/
     return 0;
 }

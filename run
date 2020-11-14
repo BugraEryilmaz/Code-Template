@@ -1,3 +1,4 @@
 #!/bin/bash
 
-./raytracer bunny.xml
+./raytracer "../../Sample Scenes/Sample Scenes/Input Files/cornellbox.xml"
+./raytracer "../../Sample Scenes/Sample Scenes/Input Files/bunny - Copy.xml" "../../Sample Scenes/Sample Scenes/Input Files/cornellbox.xml" "../../Sample Scenes/Sample Scenes/Input Files/killeroo.xml" "../../Sample Scenes/Sample Scenes/Input Files/simple_reflectance.xml" "../../Sample Scenes/Sample Scenes/Input Files/simple.xml" "../../Sample Scenes/Sample Scenes/Input Files/horse_and_mug.xml" "../../Sample Scenes/Sample Scenes/Input Files/mirror_spheres.xml" "../../Sample Scenes/Sample Scenes/Input Files/simple_shading.xml"
