@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <math.h>
+#include <thread>
 
 using namespace parser;
 
@@ -248,7 +249,8 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     ret[2] = clip(color.z);
     return ret;
 }
-void worker(Camera& camera, unsigned char* image, Scene& scene, int i, int j) {
+void worker(Camera& camera, unsigned char* image, Scene& scene, int i, int j)
+{
 
     Ray currentRay;
     for (int t = i; t < j; t++) {
@@ -261,13 +263,12 @@ void worker(Camera& camera, unsigned char* image, Scene& scene, int i, int j) {
             delete[] color;
         }
     }
-
 }
 
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
-    
+
     for (int inID = 1; inID < argc; inID++) {
 
         Scene scene;
