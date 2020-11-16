@@ -1,6 +1,5 @@
 #include "parser.h"
 #include "tinyxml2.h"
-#include <pthread.h>
 #include <sstream>
 #include <stdexcept>
 

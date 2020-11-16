@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <math.h>
+#include <pthread.h>
 
 using namespace parser;
 
@@ -349,7 +350,7 @@ int main(int argc, char* argv[])
             delete[] image;
         }
         auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
         std::cout << argv[inID] << std::endl;
         std::cout << duration.count() << std::endl;
     }
