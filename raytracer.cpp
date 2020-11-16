@@ -249,7 +249,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     ret[2] = clip(color.z);
     return ret;
 }
-void worker(Camera& camera, unsigned char* image, Scene& scene, int i, int j)
+void worker(Camera& camera, unsigned char* image, Scene& scene, const int i,const int j)
 {
 
     Ray currentRay;
@@ -283,17 +283,17 @@ int main(int argc, char* argv[])
             unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
             int index = 0;
             Ray currentRay;
-            int i = camera.image_height / 10;
-            std::thread t1(&worker, camera, image, scene, 0, i);
-            std::thread t2(&worker, camera, image, scene, i, 2 * i);
-            std::thread t3(&worker, camera, image, scene, 2 * i, 3 * i);
-            std::thread t4(&worker, camera, image, scene, 3 * i, 4 * i);
-            std::thread t5(&worker, camera, image, scene, 4 * i, 5 * i);
-            std::thread t6(&worker, camera, image, scene, 5 * i, 6 * i);
-            std::thread t7(&worker, camera, image, scene, 6 * i, 7 * i);
-            std::thread t8(&worker, camera, image, scene, 7 * i, 8 * i);
-            std::thread t9(&worker, camera, image, scene, 8 * i, 9 * i);
-            std::thread t10(&worker, camera, image, scene, 9 * i, 10 * i);
+            const int i = camera.image_height / 10;
+            std::thread t1(&worker, std::& (camera), image, scene, 0, i);
+            std::thread t2(&worker, std:: & (camera), image, scene, i, 2 * i);
+            std::thread t3(&worker, std:: & (camera), image, scene, 2 * i, 3 * i);
+            std::thread t4(&worker, std:: & (camera), image, scene, 3 * i, 4 * i);
+            std::thread t5(&worker, std:: & (camera), image, scene, 4 * i, 5 * i);
+            std::thread t6(&worker, std:: & (camera), image, scene, 5 * i, 6 * i);
+            std::thread t7(&worker, std:: & (camera), image, scene, 6 * i, 7 * i);
+            std::thread t8(&worker, std:: & (camera), image, scene, 7 * i, 8 * i);
+            std::thread t9(&worker, std:: & (camera), image, scene, 8 * i, 9 * i);
+            std::thread t10(&worker, std:: & (camera), image, scene, 9 * i, 10 * i);
             t1.join();
             t2.join();
             t3.join();
@@ -305,7 +305,7 @@ int main(int argc, char* argv[])
             t9.join();
             t10.join();
             if (camera.image_height % 10 != 0) {
-                std::thread t11(&worker, camera, image, scene, 10 * i, camera.image_height);
+                std::thread t11(&worker, std:: & (camera), image, scene, 10 * i, camera.image_height);
                 t11.join();
             }
 
