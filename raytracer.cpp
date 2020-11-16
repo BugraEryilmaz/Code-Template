@@ -3,8 +3,8 @@
 #include <chrono>
 #include <iostream>
 #include <math.h>
-#include <thread>
 #include <pthread.h>
+#include <thread>
 
 using namespace parser;
 
@@ -318,7 +318,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     ret[2] = clip(color.z);
     return ret;
 }
-void worker(Camera& camera, unsigned char* image, Scene& scene, const int i, const int j)
+void worker(Camera& camera, unsigned char*(&image), Scene& scene, int i, int j)
 {
 
     Ray currentRay;
@@ -327,8 +327,8 @@ void worker(Camera& camera, unsigned char* image, Scene& scene, const int i, con
             currentRay = Generate(camera, t, k);
             unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
             image[t * (camera.image_width) + k] = color[0];
-            image[t * (camera.image_width) + k] = color[1];
-            image[t * (camera.image_width) + k] = color[2];
+            image[t * (camera.image_width) + k + 1] = color[1];
+            image[t * (camera.image_width) + k + 2] = color[2];
             delete[] color;
         }
     }
@@ -353,18 +353,18 @@ int main(int argc, char* argv[])
             int index = 0;
             Ray currentRay;
             int i = camera.image_height / 10;
-            std::thread t1(&worker, std::ref(camera), image, std::ref(scene), 0, i);
-            std::thread t2(&worker, std::ref(camera), image, std::ref(scene), i, 2 * i);
-            std::thread t3(&worker, std::ref(camera), image, std::ref(scene), 2 * i, 3 * i);
-            std::thread t4(&worker, std::ref(camera), image, std::ref(scene), 3 * i, 4 * i);
-            std::thread t5(&worker, std::ref(camera), image, std::ref(scene), 4 * i, 5 * i);
-            std::thread t6(&worker, std::ref(camera), image, std::ref(scene), 5 * i, 6 * i);
-            std::thread t7(&worker, std::ref(camera), image, std::ref(scene), 6 * i, 7 * i);
-            std::thread t8(&worker, std::ref(camera), image, std::ref(scene), 7 * i, 8 * i);
-            std::thread t9(&worker, std::ref(camera), image, std::ref(scene), 8 * i, 9 * i);
-            std::thread t10(&worker, std::ref(camera), image, std::ref(scene), 9 * i, 10 * i);
+            std::thread t1(&worker, std::ref(camera), std::ref(image), std::ref(scene), 0, i);
+            std::thread t2(&worker, std::ref(camera), std::ref(image), std::ref(scene), i, 2 * i);
+            std::thread t3(&worker, std::ref(camera), std::ref(image), std::ref(scene), 2 * i, 3 * i);
+            std::thread t4(&worker, std::ref(camera), std::ref(image), std::ref(scene), 3 * i, 4 * i);
+            std::thread t5(&worker, std::ref(camera), std::ref(image), std::ref(scene), 4 * i, 5 * i);
+            std::thread t6(&worker, std::ref(camera), std::ref(image), std::ref(scene), 5 * i, 6 * i);
+            std::thread t7(&worker, std::ref(camera), std::ref(image), std::ref(scene), 6 * i, 7 * i);
+            std::thread t8(&worker, std::ref(camera), std::ref(image), std::ref(scene), 7 * i, 8 * i);
+            std::thread t9(&worker, std::ref(camera), std::ref(image), std::ref(scene), 8 * i, 9 * i);
+            std::thread t10(&worker, std::ref(camera), std::ref(image), std::ref(scene), 9 * i, 10 * i);
             if (camera.image_height % 10 != 0) {
-                std::thread t11(&worker, std::ref(camera), image, std::ref(scene), 10 * i, camera.image_height);
+                std::thread t11(&worker, std::ref(camera), std::ref(image), std::ref(scene), 10 * i, camera.image_height);
                 t11.join();
             }
             t1.join();
