@@ -248,7 +248,21 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     ret[2] = clip(color.z);
     return ret;
 }
+void* worker(Camera& camera, unsigned char* image, int i, int j) {
 
+    Ray currentRay;
+    for (int t = i; t < j; t++) {
+        for (int k = 0; k < camera.image_width; k++) {
+            currentRay = Generate(camera, t, k);
+            unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
+            image[t * (camera.image_width) + k] = color[0];
+            image[t * (camera.image_width) + k] = color[1];
+            image[t * (camera.image_width) + k] = color[2];
+            delete[] color;
+        }
+    }
+
+}
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
@@ -267,16 +281,32 @@ int main(int argc, char* argv[])
             unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
             int index = 0;
             Ray currentRay;
-            for (int i = 0; i < camera.image_height; i++) {
-                for (int j = 0; j < camera.image_width; j++) {
-                    currentRay = Generate(camera, i, j);
-                    unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
-                    image[index++] = color[0];
-                    image[index++] = color[1];
-                    image[index++] = color[2];
-                    delete[] color;
-                }
+            int i = camera.image_height / 10;
+            pthread_create(&t1, worker, camera, image, 0, i);
+            pthread_create(&t2, worker, camera, image, i, 2 * i);
+            pthread_create(&t3, worker, camera, image, 2 * i, 3 * i);
+            pthread_create(&t4, worker, camera, image, 3 * i, 4 * i);
+            pthread_create(&t5, worker, camera, image, 4 * i, 5 * i);
+            pthread_create(&t6, worker, camera, image, 5 * i, 6 * i);
+            pthread_create(&t7, worker, camera, image, 6 * i, 7 * i);
+            pthread_create(&t8, worker, camera, image, 7 * i, 8 * i);
+            pthread_create(&t9, worker, camera, image, 8 * i, 9 * i);
+            pthread_create(&t10, worker, camera, image, 9 * i, 10 * i);
+            threadt1.join();
+            threadt2.join();
+            threadt3.join();
+            threadt4.join();
+            threadt5.join();
+            threadt6.join();
+            threadt7.join();
+            threadt8.join();
+            threadt9.join();
+            threadt10.join();
+            if (camera.image_height % 10 != 0) {
+                pthread_create(&th11, worker, camera, image, 10 * i, camera.image_height);
+                threadt11.join();
             }
+
             write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
             delete[] image;
         }
