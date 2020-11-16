@@ -13,8 +13,8 @@
 
 # Optional
 
-- [ ]   Optimizations (One of them)
+- [x]   Optimizations (One of them)
     -   [ ] kd-tree
     -   [ ] Octree
-    -   [ ] Other
+    -   [x] Other (Bounding Volume Hierarchy)
 - [ ]   Generate complex scene
