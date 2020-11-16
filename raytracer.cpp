@@ -248,7 +248,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     ret[2] = clip(color.z);
     return ret;
 }
-void* worker(Camera& camera, unsigned char* image, int i, int j) {
+void worker(Camera& camera, unsigned char* image, Scene& scene, int i, int j) {
 
     Ray currentRay;
     for (int t = i; t < j; t++) {
@@ -263,10 +263,11 @@ void* worker(Camera& camera, unsigned char* image, int i, int j) {
     }
 
 }
+
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
-
+    
     for (int inID = 1; inID < argc; inID++) {
 
         Scene scene;
@@ -282,29 +283,29 @@ int main(int argc, char* argv[])
             int index = 0;
             Ray currentRay;
             int i = camera.image_height / 10;
-            pthread_create(&t1, worker, camera, image, 0, i);
-            pthread_create(&t2, worker, camera, image, i, 2 * i);
-            pthread_create(&t3, worker, camera, image, 2 * i, 3 * i);
-            pthread_create(&t4, worker, camera, image, 3 * i, 4 * i);
-            pthread_create(&t5, worker, camera, image, 4 * i, 5 * i);
-            pthread_create(&t6, worker, camera, image, 5 * i, 6 * i);
-            pthread_create(&t7, worker, camera, image, 6 * i, 7 * i);
-            pthread_create(&t8, worker, camera, image, 7 * i, 8 * i);
-            pthread_create(&t9, worker, camera, image, 8 * i, 9 * i);
-            pthread_create(&t10, worker, camera, image, 9 * i, 10 * i);
-            threadt1.join();
-            threadt2.join();
-            threadt3.join();
-            threadt4.join();
-            threadt5.join();
-            threadt6.join();
-            threadt7.join();
-            threadt8.join();
-            threadt9.join();
-            threadt10.join();
+            std::thread t1(&worker, camera, image, scene, 0, i);
+            std::thread t2(&worker, camera, image, scene, i, 2 * i);
+            std::thread t3(&worker, camera, image, scene, 2 * i, 3 * i);
+            std::thread t4(&worker, camera, image, scene, 3 * i, 4 * i);
+            std::thread t5(&worker, camera, image, scene, 4 * i, 5 * i);
+            std::thread t6(&worker, camera, image, scene, 5 * i, 6 * i);
+            std::thread t7(&worker, camera, image, scene, 6 * i, 7 * i);
+            std::thread t8(&worker, camera, image, scene, 7 * i, 8 * i);
+            std::thread t9(&worker, camera, image, scene, 8 * i, 9 * i);
+            std::thread t10(&worker, camera, image, scene, 9 * i, 10 * i);
+            t1.join();
+            t2.join();
+            t3.join();
+            t4.join();
+            t5.join();
+            t6.join();
+            t7.join();
+            t8.join();
+            t9.join();
+            t10.join();
             if (camera.image_height % 10 != 0) {
-                pthread_create(&th11, worker, camera, image, 10 * i, camera.image_height);
-                threadt11.join();
+                std::thread t11(&worker, camera, image, scene, 10 * i, camera.image_height);
+                t11.join();
             }
 
             write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
