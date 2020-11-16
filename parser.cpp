@@ -255,7 +255,10 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             mesh.faces.push_back(face);
         }
         stream.clear();
-        std::sort(mesh.faces.begin(), mesh.faces.end(), mysortx);
+        BVHArgs* arg = new BVHArgs(mesh.faces, 0, mesh.faces.size(), 0);
+        mesh.head = formBVH(arg);
+        delete arg;
+        
         meshes.push_back(mesh);
         mesh.faces.clear();
         element = element->NextSiblingElement("Mesh");

@@ -18,6 +18,7 @@ struct Hit {
     bool hitOccur;
     int materialID;
     Vec3f intersectPoint, normal;
+    double t;
 };
 
 bool ray_box_intersect(Ray& ray, Box& box)
@@ -47,6 +48,8 @@ double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 #define c (scene.vertex_data[triangle.v2_id - 1])
     double det, t, beta, gamma;
     det = ((-d.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (-d.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (-d.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)));
+    if (det == 0)
+        return -1;
     t = ((e.x - a.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (e.y - a.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (e.z - a.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))) / det;
     beta = ((-d.x) * ((e.y - a.y) * (c.z - a.z) - (e.z - a.z) * (c.y - a.y)) - (-d.y) * ((e.x - a.x) * (c.z - a.z) - (e.z - a.z) * (c.x - a.x)) + (-d.z) * ((e.x - a.x) * (c.y - a.y) - (e.y - a.y) * (c.x - a.x))) / det;
     gamma = ((-d.x) * ((b.y - a.y) * (e.z - a.z) - (b.z - a.z) * (e.y - a.y)) - (-d.y) * ((b.x - a.x) * (e.z - a.z) - (b.z - a.z) * (e.x - a.x)) + (-d.z) * ((b.x - a.x) * (e.y - a.y) - (b.y - a.y) * (e.x - a.x))) / det;
@@ -104,6 +107,57 @@ Ray Generate(Camera& camera, int i, int j)
     return ret;
 }
 
+Hit* ClosestHitInBox(Ray& ray, Box* box, Mesh& mesh, Scene& scene)
+{
+    if (box == NULL)
+        return NULL;
+    Hit* ret = new Hit;
+    double t, tmin = __DBL_MAX__;
+    ret->hitOccur = false;
+    for (int faceID = box->leftindex; faceID < box->rigthindex; faceID++) {
+        Face& triangle = mesh.faces[faceID];
+        t = ray_triangle_intersect(ray, triangle, scene);
+        if (t >= 0 && t < tmin) {
+            tmin = t;
+            ret->intersectPoint = ray.start + ray.dir * t;
+            ret->normal = triangle.normal;
+            ret->materialID = mesh.material_id;
+            ret->hitOccur = true;
+            ret->t = t;
+        }
+    }
+    if (ret->hitOccur)
+        return ret;
+    delete ret;
+    return NULL;
+}
+
+Hit* meshBVH(Ray& ray, Box* box, Mesh& mesh, Scene& scene)
+{
+    Hit *retl, *retr;
+    double tmin = __DBL_MAX__;
+    if (!box)
+        return NULL;
+    if (!ray_box_intersect(ray, *box))
+        return NULL;
+
+    if (box->left == NULL && box->right == NULL) {
+        return ClosestHitInBox(ray, box, mesh, scene);
+    }
+    retl = meshBVH(ray, box->left, mesh, scene);
+    retr = meshBVH(ray, box->right, mesh, scene);
+    if (!retl)
+        return retr;
+    if (!retr)
+        return retl;
+    if (retl->t < retr->t) {
+        delete retr;
+        return retl;
+    }
+    delete retl;
+    return retr;
+}
+
 Hit ClosestHit(Ray& ray, Scene& scene)
 {
     Hit ret;
@@ -113,16 +167,10 @@ Hit ClosestHit(Ray& ray, Scene& scene)
     //  Mesh intersect
     for (int meshID = 0; meshID < scene.meshes.size(); meshID++) {
         Mesh& mesh = scene.meshes[meshID];
-        for (int faceID = 0; faceID < mesh.faces.size(); faceID++) {
-            Face& triangle = mesh.faces[faceID];
-            t = ray_triangle_intersect(ray, triangle, scene);
-            if (t >= 0 && t < tmin) {
-                tmin = t;
-                ret.intersectPoint = ray.start + ray.dir * t;
-                ret.normal = triangle.normal;
-                ret.materialID = mesh.material_id;
-                ret.hitOccur = true;
-            }
+        Hit* meshHit = meshBVH(ray, mesh.head, mesh, scene);
+        if (meshHit) {
+            ret = *meshHit;
+            delete meshHit;
         }
     }
     //  Triangle intersect
@@ -135,6 +183,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             ret.normal = triangle.normal;
             ret.materialID = scene.triangles[triangleID].material_id;
             ret.hitOccur = true;
+            ret.t = t;
         }
     }
     //  Sphere intersect
@@ -147,6 +196,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             ret.normal = (ret.intersectPoint - scene.vertex_data[sphere.center_vertex_id - 1]).normalize();
             ret.materialID = sphere.material_id;
             ret.hitOccur = true;
+            ret.t = t;
         }
     }
     return ret;
@@ -269,11 +319,8 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 
 int main(int argc, char* argv[])
 {
-
-    Scene scene;
-    scene.loadFromXml(argv[1]);
     // Sample usage for reading an XML scene file
-    /*
+
     for (int inID = 1; inID < argc; inID++) {
 
         Scene scene;
@@ -302,10 +349,9 @@ int main(int argc, char* argv[])
             delete[] image;
         }
         auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
         std::cout << argv[inID] << std::endl;
         std::cout << duration.count() << std::endl;
     }
-    */
     return 0;
 }
