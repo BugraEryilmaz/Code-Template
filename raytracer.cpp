@@ -326,9 +326,9 @@ void worker(Camera& camera, unsigned char*(&image), Scene& scene, int i, int j)
         for (int k = 0; k < camera.image_width; k++) {
             currentRay = Generate(camera, t, k);
             unsigned char* color = CalculateColor(currentRay, scene.max_recursion_depth, scene);
-            image[t * (camera.image_width) + k] = color[0];
-            image[t * (camera.image_width) + k + 1] = color[1];
-            image[t * (camera.image_width) + k + 2] = color[2];
+            image[3 * (t * (camera.image_width) + k)] = color[0];
+            image[3 * (t * (camera.image_width) + k) + 1] = color[1];
+            image[3 * (t * (camera.image_width) + k) + 2] = color[2];
             delete[] color;
         }
     }
