@@ -9,7 +9,7 @@
     -   [x] Diffuse component calculation
     -   [x] Specular component calculation
     -   [x] Reflected component calculation
-- [ ]  Add multithreading
+- [x]  Add multithreading
 
 # Optional
 
