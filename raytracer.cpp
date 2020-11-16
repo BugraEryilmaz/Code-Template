@@ -20,6 +20,24 @@ struct Hit {
     Vec3f intersectPoint, normal;
 };
 
+bool ray_box_intersect(Ray& ray, Box& box)
+{
+    double minx, miny, minz;
+    double maxx, maxy, maxz;
+    minx = MIN((box.min.x - ray.start.x) / ray.dir.x, (box.max.x - ray.start.x) / ray.dir.x);
+    miny = MIN((box.min.y - ray.start.y) / ray.dir.y, (box.max.y - ray.start.y) / ray.dir.y);
+    minz = MIN((box.min.z - ray.start.z) / ray.dir.z, (box.max.z - ray.start.z) / ray.dir.z);
+    maxx = MAX((box.min.x - ray.start.x) / ray.dir.x, (box.max.x - ray.start.x) / ray.dir.x);
+    maxy = MAX((box.min.y - ray.start.y) / ray.dir.y, (box.max.y - ray.start.y) / ray.dir.y);
+    maxz = MAX((box.min.z - ray.start.z) / ray.dir.z, (box.max.z - ray.start.z) / ray.dir.z);
+    double tmin, tmax;
+    tmin = MAX(MAX(minx, miny), minz);
+    tmax = MIN(MIN(maxx, maxy), maxz);
+    if (tmin <= tmax && tmax >= 0)
+        return true;
+    return false;
+}
+
 double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 {
 #define e (ray.start)
@@ -251,8 +269,11 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 
 int main(int argc, char* argv[])
 {
-    // Sample usage for reading an XML scene file
 
+    Scene scene;
+    scene.loadFromXml(argv[1]);
+    // Sample usage for reading an XML scene file
+    /*
     for (int inID = 1; inID < argc; inID++) {
 
         Scene scene;
@@ -285,5 +306,6 @@ int main(int argc, char* argv[])
         std::cout << argv[inID] << std::endl;
         std::cout << duration.count() << std::endl;
     }
+    */
     return 0;
 }

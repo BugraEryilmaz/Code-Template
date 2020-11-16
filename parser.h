@@ -1,12 +1,15 @@
 #ifndef __HW1__PARSER__
 #define __HW1__PARSER__
 
+#include <algorithm>
 #include <math.h>
 #include <string>
 #include <vector>
 
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+#define __DBL_MAX__ double(1.79769313486231570814527423731704357e+308L)
 
 namespace parser {
 //Notice that all the structures are as simple as possible
@@ -107,11 +110,20 @@ struct Face {
     int v1_id;
     int v2_id;
     Vec3f normal;
+    double max[3];
+    double min[3];
+};
+
+struct Box {
+    Vec3f min, max;
+    Box *left, *right;
+    int leftindex, rigthindex;
 };
 
 struct Mesh {
     int material_id;
-    std::vector<Face> faces;
+    std::vector<Face> faces; // will remove
+    Box* head;
 };
 
 struct Triangle {

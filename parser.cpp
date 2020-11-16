@@ -3,6 +3,51 @@
 #include <sstream>
 #include <stdexcept>
 
+bool mysortx(parser::Face& first, parser::Face& second)
+{
+    return first.max[0] < second.max[0];
+}
+bool mysorty(parser::Face& first, parser::Face& second)
+{
+    return first.max[1] < second.max[1];
+}
+bool mysortz(parser::Face& first, parser::Face& second)
+{
+    return first.max[2] < second.max[2];
+}
+
+parser::Box* formBVH(std::vector<parser::Face>& arr, int i, int j, int level)
+{
+    parser::Box* ret = new parser::Box;
+    bool (*sortingfn)(parser::Face&, parser::Face&);
+    if (level % 3 == 0)
+        sortingfn = &mysortx;
+    else if (level % 3 == 1)
+        sortingfn = &mysorty;
+    else
+        sortingfn = &mysortz;
+    ret->left = ret->right = NULL;
+    ret->leftindex = i;
+    ret->rigthindex = j;
+    ret->max.x = 0;
+    ret->max.y = 0;
+    ret->max.z = 0;
+    ret->min.x = __DBL_MAX__;
+    ret->min.y = __DBL_MAX__;
+    ret->min.z = __DBL_MAX__;
+    for (int index = i; index < j; index++) {
+        ret->max.x = MAX(ret->max.x, arr[index].max[0]);
+        ret->max.y = MAX(ret->max.y, arr[index].max[1]);
+        ret->max.z = MAX(ret->max.z, arr[index].max[2]);
+        ret->min.x = MIN(ret->min.x, arr[index].min[0]);
+        ret->min.y = MIN(ret->min.y, arr[index].min[1]);
+        ret->min.z = MIN(ret->min.z, arr[index].min[2]);
+    }
+    if (j - i < 6) {
+        return ret;
+    }
+}
+
 void parser::Scene::loadFromXml(const std::string& filepath)
 {
     tinyxml2::XMLDocument file;
@@ -170,10 +215,16 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             triLine1 = vertex_data[face.v1_id - 1] - vertex_data[face.v0_id - 1];
             triLine2 = vertex_data[face.v2_id - 1] - vertex_data[face.v1_id - 1];
             face.normal = triLine1.cross(triLine2).normalize();
+            face.max[0] = MAX(MAX(vertex_data[face.v1_id - 1].x, vertex_data[face.v2_id - 1].x), vertex_data[face.v0_id - 1].x);
+            face.max[1] = MAX(MAX(vertex_data[face.v1_id - 1].y, vertex_data[face.v2_id - 1].y), vertex_data[face.v0_id - 1].y);
+            face.max[2] = MAX(MAX(vertex_data[face.v1_id - 1].z, vertex_data[face.v2_id - 1].z), vertex_data[face.v0_id - 1].z);
+            face.min[0] = MIN(MIN(vertex_data[face.v1_id - 1].x, vertex_data[face.v2_id - 1].x), vertex_data[face.v0_id - 1].x);
+            face.min[1] = MIN(MIN(vertex_data[face.v1_id - 1].y, vertex_data[face.v2_id - 1].y), vertex_data[face.v0_id - 1].y);
+            face.min[2] = MIN(MIN(vertex_data[face.v1_id - 1].z, vertex_data[face.v2_id - 1].z), vertex_data[face.v0_id - 1].z);
             mesh.faces.push_back(face);
         }
         stream.clear();
-
+        std::sort(mesh.faces.begin(), mesh.faces.end(), mysortx);
         meshes.push_back(mesh);
         mesh.faces.clear();
         element = element->NextSiblingElement("Mesh");
@@ -197,6 +248,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         triLine1 = vertex_data[triangle.indices.v1_id - 1] - vertex_data[triangle.indices.v0_id - 1];
         triLine2 = vertex_data[triangle.indices.v2_id - 1] - vertex_data[triangle.indices.v1_id - 1];
         triangle.indices.normal = triLine1.cross(triLine2).normalize();
+        triangle.indices.max[0] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].x, vertex_data[triangle.indices.v2_id - 1].x), vertex_data[triangle.indices.v0_id - 1].x);
+        triangle.indices.max[1] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].y, vertex_data[triangle.indices.v2_id - 1].y), vertex_data[triangle.indices.v0_id - 1].y);
+        triangle.indices.max[2] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].z, vertex_data[triangle.indices.v2_id - 1].z), vertex_data[triangle.indices.v0_id - 1].z);
         triangles.push_back(triangle);
         element = element->NextSiblingElement("Triangle");
     }
