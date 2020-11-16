@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "tinyxml2.h"
+#include <pthread.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -16,8 +17,26 @@ bool mysortz(parser::Face& first, parser::Face& second)
     return first.max[2] < second.max[2];
 }
 
-parser::Box* formBVH(std::vector<parser::Face>& arr, int i, int j, int level)
+struct BVHArgs {
+    std::vector<parser::Face>& arr;
+    int i;
+    int j;
+    int level;
+    BVHArgs(std::vector<parser::Face>& arrin, int i, int j, int level)
+        : arr(arrin)
+    {
+        this->i = i;
+        this->j = j;
+        this->level = level;
+    }
+};
+
+parser::Box* formBVH(BVHArgs* arg)
 {
+    std::vector<parser::Face>& arr = arg->arr;
+    int i = arg->i;
+    int j = arg->j;
+    int level = arg->level;
     parser::Box* ret = new parser::Box;
     bool (*sortingfn)(parser::Face&, parser::Face&);
     if (level % 3 == 0)
@@ -46,6 +65,18 @@ parser::Box* formBVH(std::vector<parser::Face>& arr, int i, int j, int level)
     if (j - i < 6) {
         return ret;
     }
+    std::sort(arr.begin() + i, arr.begin() + j, sortingfn);
+
+    BVHArgs* temp;
+    temp = new BVHArgs(arr, i, (i + j) / 2, level + 1);
+    ret->left = formBVH(temp);
+    delete temp;
+
+    temp = new BVHArgs(arr, (i + j) / 2, j, level + 1);
+    ret->right = formBVH(temp);
+    delete temp;
+
+    return ret;
 }
 
 void parser::Scene::loadFromXml(const std::string& filepath)
