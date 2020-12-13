@@ -174,7 +174,11 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     //Get Lights
     element = root->FirstChildElement("Lights");
     auto child = element->FirstChildElement("AmbientLight");
-    stream << child->GetText() << std::endl;
+    if (child) {
+        stream << child->GetText() << std::endl;
+    } else {
+        stream << "0 0 0" << std::endl;
+    }
     stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
     element = element->FirstChildElement("PointLight");
     PointLight point_light;
@@ -197,15 +201,35 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     Material material;
     while (element) {
         child = element->FirstChildElement("AmbientReflectance");
-        stream << child->GetText() << std::endl;
+        if (child) {
+            stream << child->GetText() << std::endl;
+        } else {
+            stream << "0 0 0" << std::endl;
+        }
         child = element->FirstChildElement("DiffuseReflectance");
-        stream << child->GetText() << std::endl;
+        if (child) {
+            stream << child->GetText() << std::endl;
+        } else {
+            stream << "0 0 0" << std::endl;
+        }
         child = element->FirstChildElement("SpecularReflectance");
-        stream << child->GetText() << std::endl;
+        if (child) {
+            stream << child->GetText() << std::endl;
+        } else {
+            stream << "0 0 0" << std::endl;
+        }
         child = element->FirstChildElement("MirrorReflectance");
-        stream << child->GetText() << std::endl;
+        if (child) {
+            stream << child->GetText() << std::endl;
+        } else {
+            stream << "0 0 0" << std::endl;
+        }
         child = element->FirstChildElement("PhongExponent");
-        stream << child->GetText() << std::endl;
+        if (child) {
+            stream << child->GetText() << std::endl;
+        } else {
+            stream << "0" << std::endl;
+        }
 
         stream >> material.ambient.x >> material.ambient.y >> material.ambient.z;
         stream >> material.diffuse.x >> material.diffuse.y >> material.diffuse.z;
@@ -220,12 +244,104 @@ void parser::Scene::loadFromXml(const std::string& filepath)
     //Get VertexData
     element = root->FirstChildElement("VertexData");
     stream << element->GetText() << std::endl;
-    Vec3f vertex;
-    while (!(stream >> vertex.x).eof()) {
-        stream >> vertex.y >> vertex.z;
+    Vertex vertex;
+    while (!(stream >> vertex.coordinates.x).eof()) {
+        stream >> vertex.coordinates.y >> vertex.coordinates.z;
+        vertex.u = vertex.v = -1;
         vertex_data.push_back(vertex);
     }
     stream.clear();
+
+    // Get transformations data
+    element = root->FirstChildElement("Transformations");
+    if (element) {
+        //Get Translations
+        child = element->FirstChildElement("Translation");
+        Vec3f trans;
+        while (child) {
+            stream << child->GetText() << std::endl;
+            stream >> trans.x >> trans.y >> trans.z;
+
+            translation.push_back(trans);
+            child = child->NextSiblingElement("Translation");
+        }
+        //Get Scaling
+        child = element->FirstChildElement("Scaling");
+        Vec3f scale;
+        while (child) {
+            stream << child->GetText() << std::endl;
+            stream >> scale.x >> scale.y >> scale.z;
+
+            scaling.push_back(scale);
+            child = child->NextSiblingElement("Scaling");
+        }
+        //Get Rotation
+        child = element->FirstChildElement("Rotation");
+        Vec4f rotate;
+        while (child) {
+            stream << child->GetText() << std::endl;
+            stream >> rotate.x >> rotate.y >> rotate.z >> rotate.w;
+
+            rotation.push_back(rotate);
+            child = child->NextSiblingElement("Rotation");
+        }
+    }
+
+    // Get texture data
+    element = root->FirstChildElement("Textures");
+    if (element) {
+        element = element->FirstChildElement("Texture");
+        Texture texture;
+        std::string temp;
+        while (element) {
+            auto child = element->FirstChildElement("ImageName");
+            stream << child->GetText() << std::endl;
+            child = element->FirstChildElement("Interpolation");
+            stream << child->GetText() << std::endl;
+            child = element->FirstChildElement("DecalMode");
+            stream << child->GetText() << std::endl;
+            child = element->FirstChildElement("Appearance");
+            stream << child->GetText() << std::endl;
+
+            stream >> temp; //get image stuff TODO
+
+            stream >> temp; //get interpolation
+            if (!strcmp(temp.c_str(), "bilinear"))
+                texture.interpolation = BILINEAR;
+            if (!strcmp(temp.c_str(), "nearest"))
+                texture.interpolation = NEAREST;
+
+            stream >> temp; //get color mode
+            if (!strcmp(temp.c_str(), "replace_kd"))
+                texture.colormode = REPLACE_KD;
+            if (!strcmp(temp.c_str(), "blend_kd"))
+                texture.colormode = BLEND_KD;
+            if (!strcmp(temp.c_str(), "replace_all"))
+                texture.colormode = REPLACE_ALL;
+
+            stream >> temp; //get repeat mode
+            if (!strcmp(temp.c_str(), "repeat"))
+                texture.repeatmode = REPEAT;
+            if (!strcmp(temp.c_str(), "clamp"))
+                texture.repeatmode = CLAMP;
+
+            textures.push_back(texture);
+            element = element->NextSiblingElement("Texture");
+        }
+    }
+
+    // Get texel coordinate data
+    element = root->FirstChildElement("TexCoordData");
+    if (element) {
+        stream << element->GetText() << std::endl;
+        int index = 0;
+        double u;
+        while (!(stream >> u).eof()) {
+            stream >> vertex_data[index].v;
+            vertex_data[index++].u = u;
+        }
+        stream.clear();
+    }
 
     //Get Meshes
     element = root->FirstChildElement("Objects");
@@ -239,25 +355,55 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         child = element->FirstChildElement("Faces");
         stream << child->GetText() << std::endl;
         Face face;
-        while (!(stream >> face.v0_id).eof()) {
-            stream >> face.v1_id >> face.v2_id;
+        int v0, v1, v2;
+        while (!(stream >> v0).eof()) {
+            stream >> v1 >> v2;
+            face.v0 = vertex_data[v0 - 1];
+            face.v1 = vertex_data[v1 - 1];
+            face.v2 = vertex_data[v2 - 1];
             Vec3f triLine1, triLine2;
-            triLine1 = vertex_data[face.v1_id - 1] - vertex_data[face.v0_id - 1];
-            triLine2 = vertex_data[face.v2_id - 1] - vertex_data[face.v1_id - 1];
+            triLine1 = face.v1 - face.v0;
+            triLine2 = face.v2 - face.v1;
             face.normal = triLine1.cross(triLine2).normalize();
-            face.max[0] = MAX(MAX(vertex_data[face.v1_id - 1].x, vertex_data[face.v2_id - 1].x), vertex_data[face.v0_id - 1].x);
-            face.max[1] = MAX(MAX(vertex_data[face.v1_id - 1].y, vertex_data[face.v2_id - 1].y), vertex_data[face.v0_id - 1].y);
-            face.max[2] = MAX(MAX(vertex_data[face.v1_id - 1].z, vertex_data[face.v2_id - 1].z), vertex_data[face.v0_id - 1].z);
-            face.min[0] = MIN(MIN(vertex_data[face.v1_id - 1].x, vertex_data[face.v2_id - 1].x), vertex_data[face.v0_id - 1].x);
-            face.min[1] = MIN(MIN(vertex_data[face.v1_id - 1].y, vertex_data[face.v2_id - 1].y), vertex_data[face.v0_id - 1].y);
-            face.min[2] = MIN(MIN(vertex_data[face.v1_id - 1].z, vertex_data[face.v2_id - 1].z), vertex_data[face.v0_id - 1].z);
+            face.max[0] = MAX(MAX(face.v1.coordinates.x, face.v2.coordinates.x), face.v0.coordinates.x);
+            face.max[1] = MAX(MAX(face.v1.coordinates.y, face.v2.coordinates.y), face.v0.coordinates.y);
+            face.max[2] = MAX(MAX(face.v1.coordinates.z, face.v2.coordinates.z), face.v0.coordinates.z);
+            face.min[0] = MIN(MIN(face.v1.coordinates.x, face.v2.coordinates.x), face.v0.coordinates.x);
+            face.min[1] = MIN(MIN(face.v1.coordinates.y, face.v2.coordinates.y), face.v0.coordinates.y);
+            face.min[2] = MIN(MIN(face.v1.coordinates.z, face.v2.coordinates.z), face.v0.coordinates.z);
             mesh.faces.push_back(face);
         }
         stream.clear();
+
+        child = element->FirstChildElement("Transformations");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            char c;
+            int id;
+            while (!(stream >> c).eof()) {
+                if (c == ' ')
+                    continue;
+                if (c == 's') {
+                    stream >> id;
+                    // scale
+                    std::cout << "Scale" << id << std::endl;
+                } else if (c == 't') {
+                    stream >> id;
+                    std::cout << "Translate" << id << std::endl;
+                    // translate
+                } else if (c == 'r') {
+                    stream >> id;
+                    std::cout << "Rotate" << id << std::endl;
+                    // rotation
+                }
+            }
+            stream.clear();
+        }
+
         BVHArgs* arg = new BVHArgs(mesh.faces, 0, mesh.faces.size(), 0);
         mesh.head = formBVH(arg);
         delete arg;
-        
+
         meshes.push_back(mesh);
         mesh.faces.clear();
         element = element->NextSiblingElement("Mesh");
@@ -275,15 +421,43 @@ void parser::Scene::loadFromXml(const std::string& filepath)
 
         child = element->FirstChildElement("Indices");
         stream << child->GetText() << std::endl;
-        stream >> triangle.indices.v0_id >> triangle.indices.v1_id >> triangle.indices.v2_id;
+        int v0_id, v1_id, v2_id;
+        stream >> v0_id >> v1_id >> v2_id;
+
+        triangle.indices.v0 = vertex_data[v0_id - 1];
+        triangle.indices.v1 = vertex_data[v1_id - 1];
+        triangle.indices.v2 = vertex_data[v2_id - 1];
 
         Vec3f triLine1, triLine2;
-        triLine1 = vertex_data[triangle.indices.v1_id - 1] - vertex_data[triangle.indices.v0_id - 1];
-        triLine2 = vertex_data[triangle.indices.v2_id - 1] - vertex_data[triangle.indices.v1_id - 1];
+        triLine1 = triangle.indices.v1 - triangle.indices.v0;
+        triLine2 = triangle.indices.v2 - triangle.indices.v1;
         triangle.indices.normal = triLine1.cross(triLine2).normalize();
-        triangle.indices.max[0] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].x, vertex_data[triangle.indices.v2_id - 1].x), vertex_data[triangle.indices.v0_id - 1].x);
-        triangle.indices.max[1] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].y, vertex_data[triangle.indices.v2_id - 1].y), vertex_data[triangle.indices.v0_id - 1].y);
-        triangle.indices.max[2] = MAX(MAX(vertex_data[triangle.indices.v1_id - 1].z, vertex_data[triangle.indices.v2_id - 1].z), vertex_data[triangle.indices.v0_id - 1].z);
+
+        child = element->FirstChildElement("Transformations");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            char c;
+            int id;
+            while (!(stream >> c).eof()) {
+                if (c == ' ')
+                    continue;
+                if (c == 's') {
+                    stream >> id;
+                    // scale
+                    std::cout << "Scale" << id << std::endl;
+                } else if (c == 't') {
+                    stream >> id;
+                    std::cout << "Translate" << id << std::endl;
+                    // translate
+                } else if (c == 'r') {
+                    stream >> id;
+                    std::cout << "Rotate" << id << std::endl;
+                    // rotation
+                }
+            }
+            stream.clear();
+        }
+
         triangles.push_back(triangle);
         element = element->NextSiblingElement("Triangle");
     }
@@ -299,11 +473,50 @@ void parser::Scene::loadFromXml(const std::string& filepath)
 
         child = element->FirstChildElement("Center");
         stream << child->GetText() << std::endl;
-        stream >> sphere.center_vertex_id;
+        int centerid;
+        stream >> centerid;
+        sphere.center_vertex = vertex_data[centerid - 1].coordinates;
 
         child = element->FirstChildElement("Radius");
         stream << child->GetText() << std::endl;
         stream >> sphere.radius;
+
+        sphere.u.x = 1; //init spheres own coordinate system
+        sphere.u.y = 0; //with global coordinate system
+        sphere.u.z = 0;
+
+        sphere.v.x = 0;
+        sphere.v.y = 1;
+        sphere.v.z = 0;
+
+        sphere.w.x = 0;
+        sphere.w.y = 0;
+        sphere.w.z = 1;
+
+        child = element->FirstChildElement("Transformations");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            char c;
+            int id;
+            while (!(stream >> c).eof()) {
+                if (c == ' ')
+                    continue;
+                if (c == 's') {
+                    stream >> id;
+                    // scale
+                    std::cout << "Scale" << id << std::endl;
+                } else if (c == 't') {
+                    stream >> id;
+                    std::cout << "Translate" << id << std::endl;
+                    // translate
+                } else if (c == 'r') {
+                    stream >> id;
+                    std::cout << "Rotate" << id << std::endl;
+                    // rotation
+                }
+            }
+            stream.clear();
+        }
 
         spheres.push_back(sphere);
         element = element->NextSiblingElement("Sphere");

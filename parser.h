@@ -2,6 +2,7 @@
 #define __HW1__PARSER__
 
 #include <algorithm>
+#include <iostream>
 #include <math.h>
 #include <pthread.h>
 #include <string>
@@ -10,6 +11,16 @@
 
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define NEAREST 0 // for interpolation
+#define BILINEAR 1
+#define REPLACE_KD 0 // for colormode
+#define BLEND_KD 1
+#define REPLACE_ALL 2
+#define REPEAT 0 // for repeatmode
+#define CLAMP 1
+#define MESHHIT 0 // for hitType
+#define TRIANGLEHIT 1
+#define SPHEREHIT 2
 
 #define __DBL_MAX__ double(1.79769313486231570814527423731704357e+308L)
 
@@ -81,6 +92,23 @@ struct Vec4f {
     float x, y, z, w;
 };
 
+struct Vertex {
+    Vec3f coordinates;
+    double u, v;
+
+    Vec3f operator-(const Vertex& rhs)
+    {
+        return coordinates - rhs.coordinates;
+    }
+    Vertex operator=(const Vertex& rhs)
+    {
+        coordinates = rhs.coordinates;
+        u = rhs.u;
+        v = rhs.v;
+        return *this;
+    }
+};
+
 struct Camera {
     Vec3f position;
     Vec3f gaze;
@@ -108,9 +136,9 @@ struct Material {
 };
 
 struct Face {
-    int v0_id;
-    int v1_id;
-    int v2_id;
+    Vertex v0;
+    Vertex v1;
+    Vertex v2;
     Vec3f normal;
     double max[3];
     double min[3];
@@ -124,19 +152,30 @@ struct Box {
 
 struct Mesh {
     int material_id;
-    std::vector<Face> faces; // will remove
+    int texture_id;
+    std::vector<Face> faces;
     Box* head;
 };
 
 struct Triangle {
     int material_id;
+    int texture_id;
     Face indices;
 };
 
 struct Sphere {
     int material_id;
-    int center_vertex_id;
+    int texture_id;
+    Vec3f center_vertex;
+    Vec3f u, v, w;
     float radius;
+};
+
+struct Texture {
+    int interpolation;
+    int colormode;
+    int repeatmode;
+    //another element for image itself but do not know its format for now
 };
 
 struct Scene {
@@ -148,10 +187,14 @@ struct Scene {
     Vec3f ambient_light;
     std::vector<PointLight> point_lights;
     std::vector<Material> materials;
-    std::vector<Vec3f> vertex_data;
+    std::vector<Vertex> vertex_data;
+    std::vector<Vec3f> translation;
+    std::vector<Vec3f> scaling;
+    std::vector<Vec4f> rotation;
     std::vector<Mesh> meshes;
     std::vector<Triangle> triangles;
     std::vector<Sphere> spheres;
+    std::vector<Texture> textures;
 
     //Functions
     void loadFromXml(const std::string& filepath);

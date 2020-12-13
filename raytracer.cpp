@@ -1,7 +1,6 @@
 #include "parser.h"
 #include "ppm.h"
 #include <chrono>
-#include <iostream>
 #include <math.h>
 #include <pthread.h>
 #include <thread>
@@ -19,6 +18,9 @@ struct Ray {
 struct Hit {
     bool hitOccur;
     int materialID;
+    int hitType;
+    int hitID;
+    int faceID; //needed only for mesh to store faceID with meshID
     Vec3f intersectPoint, normal;
     double t;
 };
@@ -45,9 +47,9 @@ double ray_triangle_intersect(Ray& ray, Face& triangle, Scene& scene)
 {
 #define e (ray.start)
 #define d (ray.dir)
-#define a (scene.vertex_data[triangle.v0_id - 1])
-#define b (scene.vertex_data[triangle.v1_id - 1])
-#define c (scene.vertex_data[triangle.v2_id - 1])
+#define a (triangle.v0.coordinates)
+#define b (triangle.v1.coordinates)
+#define c (triangle.v2.coordinates)
     double det, t, beta, gamma;
     det = ((-d.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (-d.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (-d.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)));
     if (det == 0)
@@ -72,7 +74,7 @@ double ray_sphere_intersect(Ray& ray, Sphere& sphere, Scene& scene)
 {
 
 #define r (sphere.radius)
-#define c (scene.vertex_data[sphere.center_vertex_id - 1])
+#define c (sphere.center_vertex)
 #define e (ray.start)
 #define d (ray.dir)
 
@@ -126,6 +128,8 @@ Hit* ClosestHitInBox(Ray& ray, Box* box, Mesh& mesh, Scene& scene)
             ret->materialID = mesh.material_id;
             ret->hitOccur = true;
             ret->t = t;
+            ret->hitType = MESHHIT;
+            ret->faceID = faceID;
         }
     }
     if (ret->hitOccur)
@@ -171,7 +175,11 @@ Hit ClosestHit(Ray& ray, Scene& scene)
         Mesh& mesh = scene.meshes[meshID];
         Hit* meshHit = meshBVH(ray, mesh.head, mesh, scene);
         if (meshHit) {
-            ret = *meshHit;
+            if (meshHit->t < tmin) {
+                ret = *meshHit;
+                ret.hitID = meshID;
+                tmin = meshHit->t;
+            }
             delete meshHit;
         }
     }
@@ -186,6 +194,8 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             ret.materialID = scene.triangles[triangleID].material_id;
             ret.hitOccur = true;
             ret.t = t;
+            ret.hitType = TRIANGLEHIT;
+            ret.hitID = triangleID;
         }
     }
     //  Sphere intersect
@@ -195,10 +205,12 @@ Hit ClosestHit(Ray& ray, Scene& scene)
         if (t >= 0 && t < tmin) {
             tmin = t;
             ret.intersectPoint = ray.start + ray.dir * t;
-            ret.normal = (ret.intersectPoint - scene.vertex_data[sphere.center_vertex_id - 1]).normalize();
+            ret.normal = (ret.intersectPoint - sphere.center_vertex).normalize();
             ret.materialID = sphere.material_id;
             ret.hitOccur = true;
             ret.t = t;
+            ret.hitType = SPHEREHIT;
+            ret.hitID = sphereID;
         }
     }
     return ret;
@@ -351,7 +363,7 @@ int main(int argc, char* argv[])
             Camera& camera = scene.cameras[cam];
             unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
             int index = 0;
-            Ray currentRay;
+
             int i = camera.image_height / 10;
             std::thread t1(&worker, std::ref(camera), std::ref(image), std::ref(scene), 0, i);
             std::thread t2(&worker, std::ref(camera), std::ref(image), std::ref(scene), i, 2 * i);
