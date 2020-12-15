@@ -304,6 +304,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             stream << child->GetText() << std::endl;
 
             stream >> temp; //get image stuff TODO
+            read_jpeg_header(temp.c_str(), texture.width, texture.height);
+            texture.image = new unsigned char[texture.width * texture.height * 3];
+            read_jpeg(temp.c_str(), texture.image, texture.width, texture.height);
 
             stream >> temp; //get interpolation
             if (!strcmp(temp.c_str(), "bilinear"))
@@ -351,6 +354,14 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         child = element->FirstChildElement("Material");
         stream << child->GetText() << std::endl;
         stream >> mesh.material_id;
+
+        child = element->FirstChildElement("Texture");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            stream >> mesh.texture_id;
+        } else {
+            mesh.texture_id = -1;
+        }
 
         child = element->FirstChildElement("Faces");
         stream << child->GetText() << std::endl;
@@ -419,6 +430,14 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         stream << child->GetText() << std::endl;
         stream >> triangle.material_id;
 
+        child = element->FirstChildElement("Texture");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            stream >> triangle.texture_id;
+        } else {
+            triangle.texture_id = -1;
+        }
+
         child = element->FirstChildElement("Indices");
         stream << child->GetText() << std::endl;
         int v0_id, v1_id, v2_id;
@@ -470,6 +489,14 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         child = element->FirstChildElement("Material");
         stream << child->GetText() << std::endl;
         stream >> sphere.material_id;
+
+        child = element->FirstChildElement("Texture");
+        if (child) {
+            stream << child->GetText() << std::endl;
+            stream >> sphere.texture_id;
+        } else {
+            sphere.texture_id = -1;
+        }
 
         child = element->FirstChildElement("Center");
         stream << child->GetText() << std::endl;

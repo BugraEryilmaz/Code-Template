@@ -232,17 +232,138 @@ double* Specular(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     return ret;
 }
 
+Vec2f* uvForTriangle(Ray& ray, Face& triangle)
+{
+#define e (ray.start)
+#define d (ray.dir)
+#define a (triangle.v0.coordinates)
+#define b (triangle.v1.coordinates)
+#define c (triangle.v2.coordinates)
+    double det, t, beta, gamma;
+    det = ((-d.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (-d.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (-d.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)));
+    t = ((e.x - a.x) * ((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y)) - (e.y - a.y) * ((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) + (e.z - a.z) * ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))) / det;
+    beta = ((-d.x) * ((e.y - a.y) * (c.z - a.z) - (e.z - a.z) * (c.y - a.y)) - (-d.y) * ((e.x - a.x) * (c.z - a.z) - (e.z - a.z) * (c.x - a.x)) + (-d.z) * ((e.x - a.x) * (c.y - a.y) - (e.y - a.y) * (c.x - a.x))) / det;
+    gamma = ((-d.x) * ((b.y - a.y) * (e.z - a.z) - (b.z - a.z) * (e.y - a.y)) - (-d.y) * ((b.x - a.x) * (e.z - a.z) - (b.z - a.z) * (e.x - a.x)) + (-d.z) * ((b.x - a.x) * (e.y - a.y) - (b.y - a.y) * (e.x - a.x))) / det;
+#undef e
+#undef d
+#undef a
+#undef b
+#undef c
+    Vec2f* ret = new Vec2f();
+    ret->x = (1 - beta - gamma) * triangle.v0.u + beta * triangle.v1.u + gamma * triangle.v2.u;
+    ret->y = (1 - beta - gamma) * triangle.v0.v + beta * triangle.v1.v + gamma * triangle.v2.v;
+    return ret;
+}
+
+Vec2f* uvForSphere(Hit& hit, Sphere& sphere)
+{
+    // need matrix multiplication for uvw coordinate system transformation
+    Vec3f hitCoor = hit.intersectPoint - sphere.center_vertex; //coordinates of hit after coordinate system transformation
+    double theta = acos(hitCoor.y / sphere.radius);
+    double phi = atan2(hitCoor.z, hitCoor.x);
+    Vec2f* ret = new Vec2f();
+    ret->x = (M_PI - phi) / (2 * M_PI);
+    ret->y = theta / M_PI;
+    return ret;
+}
+
+double* ColorTexture(Vec2f& UV, Texture& texture)
+{
+    if (texture.repeatmode == REPEAT) {
+        UV.x = UV.x - (int)UV.x;
+        UV.y = UV.y - (int)UV.y;
+    } else if (texture.repeatmode == CLAMP) {
+        UV.x = MIN(UV.x, 1);
+        UV.y = MIN(UV.y, 1);
+    } else {
+        throw - 1;
+    }
+    double* ret = new double[3];
+    int pixelx, pixely;
+    pixelx = ROUND(UV.x * texture.width);
+    pixely = ROUND(UV.y * texture.height);
+
+#define PIXEL(x, y) (3 * ((y)*texture.width + (x)))
+    if (texture.interpolation == NEAREST) {
+        ret[0] = texture.image[PIXEL(pixelx, pixely)];
+        ret[1] = texture.image[PIXEL(pixelx, pixely) + 1];
+        ret[2] = texture.image[PIXEL(pixelx, pixely) + 2];
+    } else if (texture.interpolation == BILINEAR) {
+        double dx = UV.x * texture.width - pixelx;
+        double dy = UV.y * texture.height - pixely;
+        ret[0] = dx * dy * texture.image[PIXEL(pixelx + 1, pixely + 1)]
+            + (1 - dx) * dy * texture.image[PIXEL(pixelx, pixely + 1)]
+            + dx * (1 - dy) * texture.image[PIXEL(pixelx + 1, pixely)]
+            + (1 - dx) * (1 - dy) * texture.image[PIXEL(pixelx, pixely)];
+        ret[1] = dx * dy * texture.image[PIXEL(pixelx + 1, pixely + 1) + 1]
+            + (1 - dx) * dy * texture.image[PIXEL(pixelx, pixely + 1) + 1]
+            + dx * (1 - dy) * texture.image[PIXEL(pixelx + 1, pixely) + 1]
+            + (1 - dx) * (1 - dy) * texture.image[PIXEL(pixelx, pixely) + 1];
+        ret[2] = dx * dy * texture.image[PIXEL(pixelx + 1, pixely + 1) + 2]
+            + (1 - dx) * dy * texture.image[PIXEL(pixelx, pixely + 1) + 2]
+            + dx * (1 - dy) * texture.image[PIXEL(pixelx + 1, pixely) + 2]
+            + (1 - dx) * (1 - dy) * texture.image[PIXEL(pixelx, pixely) + 2];
+    } else {
+        throw - 1;
+    }
+    return ret;
+#undef PIXEL
+}
+
 double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
 {
     Vec3f toSource, toLight;
+    Texture* texture = NULL;
+    double* ret = NULL;
+    Vec2f* UV;
+    double dSquare, temp;
+    if (hit.hitType == MESHHIT) {
+        if (scene.meshes[hit.hitID].texture_id != -1) {
+            texture = &scene.textures[scene.meshes[hit.hitID].texture_id - 1];
+            UV = uvForTriangle(ray, scene.meshes[hit.hitID].faces[hit.faceID]);
+        }
+    } else if (hit.hitType == TRIANGLEHIT) {
+        if (scene.triangles[hit.hitID].texture_id != -1) {
+            texture = &scene.textures[scene.triangles[hit.hitID].texture_id - 1];
+            UV = uvForTriangle(ray, scene.triangles[hit.hitID].indices);
+        }
+    } else if (hit.hitType == SPHEREHIT) {
+        if (scene.spheres[hit.hitID].texture_id != -1) {
+            texture = &scene.textures[scene.spheres[hit.hitID].texture_id - 1];
+            UV = uvForSphere(hit, scene.spheres[hit.hitID]);
+        }
+    } else {
+        throw - 1;
+    }
+    if (texture) {
+        ret = ColorTexture(*UV, *texture);
+        if (texture->colormode == REPLACE_KD) {
+            // Do nothing we already use ret as diffuse coef
+        } else if (texture->colormode == BLEND_KD) {
+            ret[0] = (ret[0] + scene.materials[hit.materialID - 1].diffuse.x) / 2;
+            ret[1] = (ret[1] + scene.materials[hit.materialID - 1].diffuse.y) / 2;
+            ret[2] = (ret[2] + scene.materials[hit.materialID - 1].diffuse.z) / 2;
+        } else if (texture->colormode == REPLACE_ALL) {
+            return ret;
+        } else {
+            throw - 1;
+        }
+    }
+    if (!ret) {
+        ret = new double[3];
+        ret[0] = scene.materials[hit.materialID - 1].diffuse.x;
+        ret[1] = scene.materials[hit.materialID - 1].diffuse.y;
+        ret[2] = scene.materials[hit.materialID - 1].diffuse.z;
+    }
+
     toLight = (light.position - hit.intersectPoint);
-    double dSquare = toLight.dot(toLight);
+    dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
-    double* ret = new double[3];
-    double temp = MAX(toLight.dot(hit.normal), 0);
-    ret[0] = scene.materials[hit.materialID - 1].diffuse.x * temp * (light.intensity.x / dSquare);
-    ret[1] = scene.materials[hit.materialID - 1].diffuse.y * temp * (light.intensity.y / dSquare);
-    ret[2] = scene.materials[hit.materialID - 1].diffuse.z * temp * (light.intensity.z / dSquare);
+    temp = MAX(toLight.dot(hit.normal), 0);
+
+    ret[0] = ret[0] * temp * (light.intensity.x / dSquare);
+    ret[1] = ret[1] * temp * (light.intensity.y / dSquare);
+    ret[2] = ret[2] * temp * (light.intensity.z / dSquare);
 
     return ret;
 }
@@ -363,7 +484,8 @@ int main(int argc, char* argv[])
             Camera& camera = scene.cameras[cam];
             unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
             int index = 0;
-
+            worker(camera, image, scene, 0, camera.image_height);
+            /*
             int i = camera.image_height / 10;
             std::thread t1(&worker, std::ref(camera), std::ref(image), std::ref(scene), 0, i);
             std::thread t2(&worker, std::ref(camera), std::ref(image), std::ref(scene), i, 2 * i);
@@ -389,7 +511,7 @@ int main(int argc, char* argv[])
             t8.join();
             t9.join();
             t10.join();
-
+*/
             write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
             delete[] image;
         }

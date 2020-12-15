@@ -1,6 +1,7 @@
 #ifndef __HW1__PARSER__
 #define __HW1__PARSER__
 
+#include "jpeg.h"
 #include <algorithm>
 #include <iostream>
 #include <math.h>
@@ -8,25 +9,31 @@
 #include <string>
 #include <vector>
 
-
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define ROUND(a) ((((a) - ((int)(a))) > 0.5) ? (((int)(a)) + 1) : ((int)(a)))
+
 #define NEAREST 0 // for interpolation
 #define BILINEAR 1
-#define REPLACE_KD 0 // for colormode
-#define BLEND_KD 1
-#define REPLACE_ALL 2
-#define REPEAT 0 // for repeatmode
-#define CLAMP 1
-#define MESHHIT 0 // for hitType
-#define TRIANGLEHIT 1
-#define SPHEREHIT 2
+#define REPLACE_KD 2 // for colormode
+#define BLEND_KD 3
+#define REPLACE_ALL 4
+#define NOTEXTURE 5
+#define REPEAT 6 // for repeatmode
+#define CLAMP 7
+#define MESHHIT 8 // for hitType
+#define TRIANGLEHIT 9
+#define SPHEREHIT 10
 
 #define __DBL_MAX__ double(1.79769313486231570814527423731704357e+308L)
 
 namespace parser {
 //Notice that all the structures are as simple as possible
 //so that you are not enforced to adopt any style or design.
+
+struct Vec2f {
+    double x, y;
+};
 struct Vec3f {
     double x, y, z;
     Vec3f operator+(const Vec3f& rhs)
@@ -89,7 +96,7 @@ struct Vec3i {
 };
 
 struct Vec4f {
-    float x, y, z, w;
+    double x, y, z, w;
 };
 
 struct Vertex {
@@ -176,6 +183,13 @@ struct Texture {
     int colormode;
     int repeatmode;
     //another element for image itself but do not know its format for now
+    unsigned char* image;
+    int width, height;
+    // texture data is cleared during pushback so delete it at the end of the program
+    /*~Texture()
+    {
+        delete[] image;
+    }*/
 };
 
 struct Scene {
