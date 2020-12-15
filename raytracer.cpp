@@ -468,7 +468,48 @@ matrix Rotate(double angle, double u, double v, double w) {
     M = M.MulwihMatrix(R);
     return M;
 }
-
+matrix InverseRotation(double angle, double u, double v, double w) {
+    Vec3f vecu;
+    Vec3f vecv;
+    Vec3f vecw;
+    vecu.x = u;
+    vecu.y = v;
+    vecu.z = w;
+    vecu.normalize();
+    vecv.x = -v;
+    vecv.y = u;
+    vecv.z = 0;
+    if (u == 0 && v == 0)
+        vecv.y = 1;
+    vecv.normalize();
+    vecw.x = -u * w;
+    vecw.y = -v * w;
+    vecw.z = u * u + v * v;
+    vecw.normalize();
+    matrix M;
+    M.Put(0, 0, vecu.x);
+    M.Put(0, 1, vecu.y);
+    M.Put(0, 2, vecu.z);
+    M.Put(1, 0, vecv.x);
+    M.Put(1, 1, vecv.y);
+    M.Put(1, 2, vecv.z);
+    M.Put(2, 0, vecw.x);
+    M.Put(2, 1, vecw.y);
+    M.Put(2, 2, vecw.z);
+    M.Put(3, 3, 1);
+    matrix R;
+    R.Put(0, 0, 1);
+    R.Put(3, 3, 1);
+    R.Put(1, 1, cos(-angle));
+    R.Put(1, 2, -sin(-angle));
+    R.Put(2, 1, sin(-angle));
+    R.Put(2, 2, cos(-angle));
+    matrix rotatematrix;
+    matrix IM;
+    R = R.MulwihMatrix(M.Transpose());
+    M = M.MulwihMatrix(R);
+    return M;
+}
 
 
 
