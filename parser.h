@@ -99,6 +99,93 @@ struct Vec4f {
     double x, y, z, w;
 };
 
+struct matrix
+{
+    double translator[4][4];
+
+    matrix() {
+        int i, j;
+        for (i = 0;i < 4;i++) {
+            for (j = 0;j < 4;j++)
+                translator[i][j] = 0.0;
+        }
+    }
+    void Print() {
+        int i, j;
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++) {
+                std::cout << translator[i][j] << ' ';
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    Vec4f MulwithVec(Vec4f& rhs) {
+        Vec4f vec;
+        int i = 0, j;
+
+        vec.x += translator[0][0] * rhs.x;
+        vec.x += translator[0][1] * rhs.y;
+        vec.x += translator[0][2] * rhs.z;
+        vec.x += translator[0][3] * rhs.w;
+
+        vec.y += translator[1][0] * rhs.x;
+        vec.y += translator[1][1] * rhs.y;
+        vec.y += translator[1][2] * rhs.z;
+        vec.y += translator[1][3] * rhs.w;
+
+        vec.z += translator[2][0] * rhs.x;
+        vec.z += translator[2][1] * rhs.y;
+        vec.z += translator[2][2] * rhs.z;
+        vec.z += translator[2][3] * rhs.w;
+
+        vec.w += 1;
+
+        return vec;
+    }
+
+    matrix MulwihMatrix(double factor[4][4]) {
+        int i, j, k;
+        matrix combine;
+        for (i = 0;i < 4;i++) {
+            for (j = 0;j < 4;j++) {
+                for (k = 0;k < 4;k++) {
+                    combine.translator[i][j] += factor[i][k] * translator[k][j];
+                }
+            }
+        }
+        return combine;
+    }
+    matrix Transpose() {
+        matrix trans;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                trans.translator[i][j] = translator[j][i];
+            }
+        }
+        return trans;
+    }
+
+    void Put2Matrix(double val[4][4]) {
+        int i, j;
+        for (i = 0;i < 4;i++) {
+            for (j = 0;j < 4;j++) {
+                translator[i][j] = val[i][j];
+            }
+        }
+    }
+
+    void MakeIdentity() {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                translator[i][j] = i == j ? 1. : .0;
+            }
+        }
+    }
+};
+
+
+
 struct Vertex {
     Vec3f coordinates;
     double u, v;
