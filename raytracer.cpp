@@ -389,6 +389,75 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
         return false;
 }
 
+
+matrix Translation(double i, double j, double k) {
+    matrix transmatrix;
+    transmatrix.MakeIdentity();
+    transmatrix.Put(0, 3, i);
+    transmatrix.Put(1, 3, j);
+    transmatrix.Put(2, 3, k);
+    return transmatrix;
+}
+
+matrix InverseTranslation(double i, double j, double k) {
+    matrix transmatrix;
+    transmatrix.MakeIdentity();
+    transmatrix.Put(0, 3, -i);
+    transmatrix.Put(1, 3, -j);
+    transmatrix.Put(2, 3, -k);
+    return transmatrix;
+}
+
+matrix Scaling(double i, double j, double k) {
+    matrix scalematrix;
+    scalematrix.Put(0, 0, i);
+    scalematrix.Put(1, 1, j);
+    scalematrix.Put(2, 2, k);
+    scalematrix.Put(3, 3, 1);
+    return scalematrix;
+}
+
+matrix InverseScaling(double i, double j, double k) {
+    matrix scalematrix;
+    scalematrix.Put(0, 0, 1 / i);
+    scalematrix.Put(1, 1, 1 / j);
+    scalematrix.Put(2, 2, 1 / k);
+    scalematrix.Put(3, 3, 1);
+    return scalematrix;
+}
+
+matrix Rotate(double angle, double u, double v, double w) {
+    Vec3f vec;
+    vec.x = u;
+    vec.y = v;
+    vec.z = w;
+    vec.normalize();
+    matrix M;
+    M.Put(0, 0, vec.x);
+    M.Put(0, 1, vec.y);
+    M.Put(0, 2, vec.z);
+    M.Put(1, 0, -vec.y);
+    M.Put(1, 1, vec.x);
+    M.Put(2, 0, -vec.x * vec.z);
+    M.Put(2, 1, -vec.y * vec.z);
+    M.Put(2, 2, vec.x * vec.x + vec.y * vec.y);
+    matrix R;
+    R.Put(0, 0, 1);
+    R.Put(3, 3, 1);
+    R.Put(1, 1, cos(angle));
+    R.Put(1, 2, -sin(angle));
+    R.Put(2, 1, sin(angle));
+    R.Put(2, 2, cos(angle));
+    matrix rotatematrix;
+    matrix IM;
+    R = R.MulwihMatrix(M.Transpose());
+    M = M.MulwihMatrix(R);
+    return M;
+}
+
+
+
+
 unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 {
     Vec3f color = { 0, 0, 0 };

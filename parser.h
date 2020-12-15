@@ -144,13 +144,13 @@ struct matrix
         return vec;
     }
 
-    matrix MulwihMatrix(double factor[4][4]) {
+    matrix MulwihMatrix(matrix factor) {
         int i, j, k;
         matrix combine;
         for (i = 0;i < 4;i++) {
             for (j = 0;j < 4;j++) {
                 for (k = 0;k < 4;k++) {
-                    combine.translator[i][j] += factor[i][k] * translator[k][j];
+                    combine.translator[i][j] += factor.translator[i][k] * translator[k][j];
                 }
             }
         }
@@ -166,13 +166,10 @@ struct matrix
         return trans;
     }
 
-    void Put2Matrix(double val[4][4]) {
-        int i, j;
-        for (i = 0;i < 4;i++) {
-            for (j = 0;j < 4;j++) {
-                translator[i][j] = val[i][j];
-            }
-        }
+    void Put(int i, int j, double val) {
+
+        translator[i][j] = val;
+
     }
 
     void MakeIdentity() {
@@ -183,7 +180,6 @@ struct matrix
         }
     }
 };
-
 
 
 struct Vertex {
