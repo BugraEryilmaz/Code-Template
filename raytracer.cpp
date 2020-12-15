@@ -437,6 +437,8 @@ matrix Rotate(double angle, double u, double v, double w) {
     vecv.x = -v;
     vecv.y = u;
     vecv.z = 0;
+    if (u == 0 && v == 0)
+        vecv.y = 1;
     vecv.normalize();
     vecw.x = -u * w;
     vecw.y = -v * w;
