@@ -337,14 +337,17 @@ double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
     }
     if (texture) {
         ret = ColorTexture(*UV, *texture);
+        if (texture->colormode == REPLACE_ALL)
+            return ret;
+        ret[0] = ret[0] / 255;
+        ret[1] = ret[1] / 255;
+        ret[2] = ret[2] / 255;
         if (texture->colormode == REPLACE_KD) {
             // Do nothing we already use ret as diffuse coef
         } else if (texture->colormode == BLEND_KD) {
             ret[0] = (ret[0] + scene.materials[hit.materialID - 1].diffuse.x) / 2;
             ret[1] = (ret[1] + scene.materials[hit.materialID - 1].diffuse.y) / 2;
             ret[2] = (ret[2] + scene.materials[hit.materialID - 1].diffuse.z) / 2;
-        } else if (texture->colormode == REPLACE_ALL) {
-            return ret;
         } else {
             throw - 1;
         }
@@ -389,8 +392,8 @@ bool isShadow(Hit& hit, PointLight& light, Scene& scene)
         return false;
 }
 
-
-matrix Translation(double i, double j, double k) {
+matrix Translation(double i, double j, double k)
+{
     matrix transmatrix;
     transmatrix.MakeIdentity();
     transmatrix.Put(0, 3, i);
@@ -399,7 +402,8 @@ matrix Translation(double i, double j, double k) {
     return transmatrix;
 }
 
-matrix InverseTranslation(double i, double j, double k) {
+matrix InverseTranslation(double i, double j, double k)
+{
     matrix transmatrix;
     transmatrix.MakeIdentity();
     transmatrix.Put(0, 3, -i);
@@ -408,7 +412,8 @@ matrix InverseTranslation(double i, double j, double k) {
     return transmatrix;
 }
 
-matrix Scaling(double i, double j, double k) {
+matrix Scaling(double i, double j, double k)
+{
     matrix scalematrix;
     scalematrix.Put(0, 0, i);
     scalematrix.Put(1, 1, j);
@@ -417,7 +422,8 @@ matrix Scaling(double i, double j, double k) {
     return scalematrix;
 }
 
-matrix InverseScaling(double i, double j, double k) {
+matrix InverseScaling(double i, double j, double k)
+{
     matrix scalematrix;
     scalematrix.Put(0, 0, 1 / i);
     scalematrix.Put(1, 1, 1 / j);
@@ -426,7 +432,8 @@ matrix InverseScaling(double i, double j, double k) {
     return scalematrix;
 }
 
-matrix Rotate(double angle, double u, double v, double w) {
+matrix Rotate(double angle, double u, double v, double w)
+{
     Vec3f vecu;
     Vec3f vecv;
     Vec3f vecw;
@@ -468,7 +475,8 @@ matrix Rotate(double angle, double u, double v, double w) {
     M = M.MulwihMatrix(R);
     return M;
 }
-matrix InverseRotation(double angle, double u, double v, double w) {
+matrix InverseRotation(double angle, double u, double v, double w)
+{
     Vec3f vecu;
     Vec3f vecv;
     Vec3f vecw;
@@ -510,8 +518,6 @@ matrix InverseRotation(double angle, double u, double v, double w) {
     M = M.MulwihMatrix(R);
     return M;
 }
-
-
 
 unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
 {

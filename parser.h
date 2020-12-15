@@ -99,18 +99,19 @@ struct Vec4f {
     double x, y, z, w;
 };
 
-struct matrix
-{
+struct matrix {
     double translator[4][4];
 
-    matrix() {
+    matrix()
+    {
         int i, j;
-        for (i = 0;i < 4;i++) {
-            for (j = 0;j < 4;j++)
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++)
                 translator[i][j] = 0.0;
         }
     }
-    void Print() {
+    void Print()
+    {
         int i, j;
         for (i = 0; i < 4; i++) {
             for (j = 0; j < 4; j++) {
@@ -120,8 +121,9 @@ struct matrix
         }
     }
 
-    Vec4f MulwithVec(Vec4f& rhs) {
-        Vec4f vec;
+    Vec4f MulwithVec(Vec4f& rhs)
+    {
+        Vec4f vec = { 0, 0, 0, 0 };
         int i = 0, j;
 
         vec.x += translator[0][0] * rhs.x;
@@ -144,19 +146,21 @@ struct matrix
         return vec;
     }
 
-    matrix MulwihMatrix(matrix factor) {
+    matrix MulwihMatrix(matrix factor)
+    {
         int i, j, k;
         matrix combine;
-        for (i = 0;i < 4;i++) {
-            for (j = 0;j < 4;j++) {
-                for (k = 0;k < 4;k++) {
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++) {
+                for (k = 0; k < 4; k++) {
                     combine.translator[i][j] += factor.translator[i][k] * translator[k][j];
                 }
             }
         }
         return combine;
     }
-    matrix Transpose() {
+    matrix Transpose()
+    {
         matrix trans;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -166,13 +170,14 @@ struct matrix
         return trans;
     }
 
-    void Put(int i, int j, double val) {
+    void Put(int i, int j, double val)
+    {
 
         translator[i][j] = val;
-
     }
 
-    void MakeIdentity() {
+    void MakeIdentity()
+    {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 translator[i][j] = i == j ? 1. : .0;
@@ -180,7 +185,6 @@ struct matrix
         }
     }
 };
-
 
 struct Vertex {
     Vec3f coordinates;
