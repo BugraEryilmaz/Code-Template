@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#define PI 3.14159265 
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define ROUND(a) ((((a) - ((int)(a))) > 0.5) ? (((int)(a)) + 1) : ((int)(a)))
@@ -60,7 +61,15 @@ matrix Scaling(double i, double j, double k)
     scalematrix.Put(3, 3, 1);
     return scalematrix;
 }
+matrix ScalingNormal(double i, double j, double k) {
+    matrix scalematrix;
+    scalematrix.Put(0, 0, 1 / i);
+    scalematrix.Put(1, 1, 1 / j);
+    scalematrix.Put(2, 2, 1 / k);
+    scalematrix.Put(3, 3, 1);
 
+    return scalematrix;
+}
 matrix InverseScaling(double i, double j, double k)
 {
     matrix scalematrix;
@@ -102,17 +111,14 @@ matrix Rotate(double angle, double u, double v, double w)
     M.Put(2, 2, vecw.z);
     M.Put(3, 3, 1);
     matrix R;
+    angle = PI * angle / 180;
     R.Put(0, 0, 1);
     R.Put(3, 3, 1);
     R.Put(1, 1, cos(angle));
     R.Put(1, 2, -sin(angle));
     R.Put(2, 1, sin(angle));
     R.Put(2, 2, cos(angle));
-    matrix rotatematrix;
-    matrix IM;
-    R = R.MulwihMatrix(M.Transpose());
-    M = M.MulwihMatrix(R);
-    return M;
+    return M.Transpose() * (R * M);
 }
 matrix InverseRotation(double angle, double u, double v, double w)
 {
@@ -145,18 +151,31 @@ matrix InverseRotation(double angle, double u, double v, double w)
     M.Put(2, 2, vecw.z);
     M.Put(3, 3, 1);
     matrix R;
+    angle = PI * angle / 180;
     R.Put(0, 0, 1);
     R.Put(3, 3, 1);
     R.Put(1, 1, cos(-angle));
     R.Put(1, 2, -sin(-angle));
     R.Put(2, 1, sin(-angle));
     R.Put(2, 2, cos(-angle));
-    matrix rotatematrix;
-    matrix IM;
-    R = R.MulwihMatrix(M.Transpose());
-    M = M.MulwihMatrix(R);
-    return M;
+    return M.Transpose() * (R * M);
 }
+
+matrix	Cameratransformation(Vec3f u, Vec3f v, Vec3f w) {
+    matrix camera;
+    camera.Put(0, 0, u.x);
+    camera.Put(0, 1, u.y);
+    camera.Put(0, 2, u.z);
+    camera.Put(1, 0, v.x);
+    camera.Put(1, 1, v.y);
+    camera.Put(1, 2, v.z);
+    camera.Put(2, 0, w.x);
+    camera.Put(2, 1, w.y);
+    camera.Put(2, 2, w.z);
+    camera.Put(3, 3, 1);
+    return camera;
+}
+
 
 struct Vec2f {
     double x, y;
@@ -248,10 +267,10 @@ struct matrix {
         }
     }
 
-    Vec4f MulwithVec(Vec4f& rhs)
+    Vec4f operator*(Vec4f& rhs)
     {
         Vec4f vec = { 0, 0, 0, 0 };
-        int i = 0, j;
+       
 
         vec.x += translator[0][0] * rhs.x;
         vec.x += translator[0][1] * rhs.y;
@@ -273,14 +292,13 @@ struct matrix {
         return vec;
     }
 
-    matrix MulwihMatrix(matrix factor)
-    {
+    matrix operator*(matrix& factor) {
         int i, j, k;
         matrix combine;
-        for (i = 0; i < 4; i++) {
-            for (j = 0; j < 4; j++) {
-                for (k = 0; k < 4; k++) {
-                    combine.translator[i][j] += factor.translator[i][k] * translator[k][j];
+        for (i = 0;i < 4;i++) {
+            for (j = 0;j < 4;j++) {
+                for (k = 0;k < 4;k++) {
+                    combine.translator[i][j] += factor.translator[k][j] * translator[i][k];
                 }
             }
         }
