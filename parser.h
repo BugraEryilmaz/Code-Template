@@ -118,7 +118,7 @@ matrix Rotate(double angle, double u, double v, double w)
     R.Put(1, 2, -sin(angle));
     R.Put(2, 1, sin(angle));
     R.Put(2, 2, cos(angle));
-    return M.Transpose() * (R * M);
+    return M.Transpose() * R * M;
 }
 matrix InverseRotation(double angle, double u, double v, double w)
 {
@@ -158,7 +158,7 @@ matrix InverseRotation(double angle, double u, double v, double w)
     R.Put(1, 2, -sin(-angle));
     R.Put(2, 1, sin(-angle));
     R.Put(2, 2, cos(-angle));
-    return M.Transpose() * (R * M);
+    return M.Transpose() * R * M;
 }
 
 matrix	Cameratransformation(Vec3f u, Vec3f v, Vec3f w) {
