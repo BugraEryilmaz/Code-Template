@@ -391,23 +391,31 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             stream << child->GetText() << std::endl;
             char c;
             int id;
+            matrix M;
+            matrix N;
             while (!(stream >> c).eof()) {
                 if (c == ' ')
                     continue;
                 if (c == 's') {
                     stream >> id;
                     // scale
+                    M = Scaling(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * M;
+                    N = ScalingNormal(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * N;
                     std::cout << "Scale" << id << std::endl;
                 } else if (c == 't') {
                     stream >> id;
                     std::cout << "Translate" << id << std::endl;
+                    M = Translation(translation[id - 1].x, translation[id - 1].y, translation[id - 1].z) * M;
                     // translate
                 } else if (c == 'r') {
                     stream >> id;
                     std::cout << "Rotate" << id << std::endl;
+                    M = Rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * M;
+                    N = Rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * N;
                     // rotation
                 }
             }
+
             stream.clear();
         }
 
