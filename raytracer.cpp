@@ -258,7 +258,9 @@ Vec2f* uvForTriangle(Ray& ray, Face& triangle)
 Vec2f* uvForSphere(Hit& hit, Sphere& sphere)
 {
     // need matrix multiplication for uvw coordinate system transformation
-    Vec3f hitCoor = hit.intersectPoint - sphere.center_vertex; //coordinates of hit after coordinate system transformation
+    matrix M = translate(-sphere.center_vertex.x, -sphere.center_vertex.y, -sphere.center_vertex.z);
+    M = CameraT(sphere.u, sphere.v, sphere.w) * M;
+    Vec3f hitCoor = hit.intersectPoint * M; //coordinates of hit after coordinate system transformation
     double theta = acos(hitCoor.y / sphere.radius);
     double phi = atan2(hitCoor.z, hitCoor.x);
     Vec2f* ret = new Vec2f();

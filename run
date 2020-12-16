@@ -1,3 +1,4 @@
 #!/bin/bash
 
-./raytracer "Test/bunny - Copy.xml" "Test/cornellbox.xml" "Test/earth_and_moon.xml" "Test/horse.xml" "Test/horse_and_mug.xml" "Test/killeroo.xml" "Test/mirror_spheres.xml" "Test/simple.xml" "Test/simple_reflectance.xml" "Test/simple_shading.xml" "Test/simple_transform.xml" "Test/skybox.xml" "Test/spheres_texture_bilinear.xml" "Test/spheres_texture_nearest.xml" "Test/spheres_transform.xml"
+./raytracer "Test/bunny - Copy.xml" "Test/cornellbox.xml" "Test/earth_and_moon.xml" "Test/horse.xml" "Test/horse_and_mug.xml" "Test/mirror_spheres.xml" "Test/simple.xml" "Test/simple_reflectance.xml" "Test/simple_shading.xml" "Test/simple_transform.xml" "Test/skybox.xml" "Test/spheres_texture_bilinear.xml" "Test/spheres_texture_nearest.xml" "Test/spheres_transform.xml"
+./raytracer "Test/killeroo.xml"

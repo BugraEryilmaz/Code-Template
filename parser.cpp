@@ -363,6 +363,34 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             mesh.texture_id = -1;
         }
 
+        child = element->FirstChildElement("Transformations");
+        matrix M;
+        M.MakeIdentity();
+        if (child) {
+            stream << child->GetText() << std::endl;
+            char c;
+            int id;
+            while (!(stream >> c).eof()) {
+                if (c == ' ')
+                    continue;
+                if (c == 's') {
+                    stream >> id;
+                    // scale
+                    M = scale(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * M;
+                } else if (c == 't') {
+                    stream >> id;
+                    M = translate(translation[id - 1].x, translation[id - 1].y, translation[id - 1].z) * M;
+                    // translate
+                } else if (c == 'r') {
+                    stream >> id;
+                    M = rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * M;
+                    // rotation
+                }
+            }
+
+            stream.clear();
+        }
+
         child = element->FirstChildElement("Faces");
         stream << child->GetText() << std::endl;
         Face face;
@@ -372,6 +400,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             face.v0 = vertex_data[v0 - 1];
             face.v1 = vertex_data[v1 - 1];
             face.v2 = vertex_data[v2 - 1];
+            face.v0.coordinates *= M;
+            face.v1.coordinates *= M;
+            face.v2.coordinates *= M;
             Vec3f triLine1, triLine2;
             triLine1 = face.v1 - face.v0;
             triLine2 = face.v2 - face.v1;
@@ -385,39 +416,6 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             mesh.faces.push_back(face);
         }
         stream.clear();
-
-        child = element->FirstChildElement("Transformations");
-        if (child) {
-            stream << child->GetText() << std::endl;
-            char c;
-            int id;
-            matrix M;
-            matrix N;
-            while (!(stream >> c).eof()) {
-                if (c == ' ')
-                    continue;
-                if (c == 's') {
-                    stream >> id;
-                    // scale
-                    M = Scaling(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * M;
-                    N = ScalingNormal(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * N;
-                    std::cout << "Scale" << id << std::endl;
-                } else if (c == 't') {
-                    stream >> id;
-                    std::cout << "Translate" << id << std::endl;
-                    M = Translation(translation[id - 1].x, translation[id - 1].y, translation[id - 1].z) * M;
-                    // translate
-                } else if (c == 'r') {
-                    stream >> id;
-                    std::cout << "Rotate" << id << std::endl;
-                    M = Rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * M;
-                    N = Rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * N;
-                    // rotation
-                }
-            }
-
-            stream.clear();
-        }
 
         BVHArgs* arg = new BVHArgs(mesh.faces, 0, mesh.faces.size(), 0);
         mesh.head = formBVH(arg);
@@ -451,16 +449,9 @@ void parser::Scene::loadFromXml(const std::string& filepath)
         int v0_id, v1_id, v2_id;
         stream >> v0_id >> v1_id >> v2_id;
 
-        triangle.indices.v0 = vertex_data[v0_id - 1];
-        triangle.indices.v1 = vertex_data[v1_id - 1];
-        triangle.indices.v2 = vertex_data[v2_id - 1];
-
-        Vec3f triLine1, triLine2;
-        triLine1 = triangle.indices.v1 - triangle.indices.v0;
-        triLine2 = triangle.indices.v2 - triangle.indices.v1;
-        triangle.indices.normal = triLine1.cross(triLine2).normalize();
-
         child = element->FirstChildElement("Transformations");
+        matrix M;
+        M.MakeIdentity();
         if (child) {
             stream << child->GetText() << std::endl;
             char c;
@@ -471,19 +462,32 @@ void parser::Scene::loadFromXml(const std::string& filepath)
                 if (c == 's') {
                     stream >> id;
                     // scale
-                    std::cout << "Scale" << id << std::endl;
+                    M = scale(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * M;
                 } else if (c == 't') {
                     stream >> id;
-                    std::cout << "Translate" << id << std::endl;
+                    M = translate(translation[id - 1].x, translation[id - 1].y, translation[id - 1].z) * M;
                     // translate
                 } else if (c == 'r') {
                     stream >> id;
-                    std::cout << "Rotate" << id << std::endl;
+                    M = rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * M;
                     // rotation
                 }
             }
             stream.clear();
         }
+
+        triangle.indices.v0 = vertex_data[v0_id - 1];
+        triangle.indices.v1 = vertex_data[v1_id - 1];
+        triangle.indices.v2 = vertex_data[v2_id - 1];
+
+        triangle.indices.v0.coordinates *= M;
+        triangle.indices.v1.coordinates *= M;
+        triangle.indices.v2.coordinates *= M;
+
+        Vec3f triLine1, triLine2;
+        triLine1 = triangle.indices.v1 - triangle.indices.v0;
+        triLine2 = triangle.indices.v2 - triangle.indices.v1;
+        triangle.indices.normal = triLine1.cross(triLine2).normalize();
 
         triangles.push_back(triangle);
         element = element->NextSiblingElement("Triangle");
@@ -533,23 +537,42 @@ void parser::Scene::loadFromXml(const std::string& filepath)
             stream << child->GetText() << std::endl;
             char c;
             int id;
+            matrix M;
+            M.MakeIdentity();
+            matrix Coord;
+            Coord.MakeIdentity();
+            double Radius = 1;
             while (!(stream >> c).eof()) {
                 if (c == ' ')
                     continue;
                 if (c == 's') {
                     stream >> id;
                     // scale
-                    std::cout << "Scale" << id << std::endl;
+                    M = scale(scaling[id - 1].x, scaling[id - 1].y, scaling[id - 1].z) * M;
+                    Radius *= scaling[id - 1].x;
                 } else if (c == 't') {
                     stream >> id;
-                    std::cout << "Translate" << id << std::endl;
+                    M = translate(translation[id - 1].x, translation[id - 1].y, translation[id - 1].z) * M;
                     // translate
                 } else if (c == 'r') {
                     stream >> id;
-                    std::cout << "Rotate" << id << std::endl;
+                    M = rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * M;
+                    Coord = rotate(rotation[id - 1].x, rotation[id - 1].y, rotation[id - 1].z, rotation[id - 1].w) * Coord;
                     // rotation
                 }
             }
+            sphere.u *= Coord;
+            sphere.v *= Coord;
+            sphere.w *= Coord;
+
+            sphere.u.normalize();
+            sphere.v.normalize();
+            sphere.w.normalize();
+
+            sphere.radius *= Radius;
+
+            sphere.center_vertex *= M;
+
             stream.clear();
         }
 

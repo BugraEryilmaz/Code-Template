@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#define PI 3.14159265 
+#define PI 3.14159265
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define ROUND(a) ((((a) - ((int)(a))) > 0.5) ? (((int)(a)) + 1) : ((int)(a)))
@@ -32,7 +32,177 @@ namespace parser {
 //Notice that all the structures are as simple as possible
 //so that you are not enforced to adopt any style or design.
 
-matrix Translation(double i, double j, double k)
+struct Vec4f {
+    double x, y, z, w;
+};
+struct matrix {
+    double translator[4][4];
+
+    matrix()
+    {
+        int i, j;
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++)
+                translator[i][j] = 0.0;
+        }
+    }
+    void Print()
+    {
+        int i, j;
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++) {
+                std::cout << translator[i][j] << ' ';
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    Vec4f operator*(Vec4f& rhs)
+    {
+        Vec4f vec = { 0, 0, 0, 0 };
+
+        vec.x += translator[0][0] * rhs.x;
+        vec.x += translator[0][1] * rhs.y;
+        vec.x += translator[0][2] * rhs.z;
+        vec.x += translator[0][3] * rhs.w;
+
+        vec.y += translator[1][0] * rhs.x;
+        vec.y += translator[1][1] * rhs.y;
+        vec.y += translator[1][2] * rhs.z;
+        vec.y += translator[1][3] * rhs.w;
+
+        vec.z += translator[2][0] * rhs.x;
+        vec.z += translator[2][1] * rhs.y;
+        vec.z += translator[2][2] * rhs.z;
+        vec.z += translator[2][3] * rhs.w;
+
+        vec.w += 1;
+
+        return vec;
+    }
+
+    matrix operator*(matrix& factor)
+    {
+        int i, j, k;
+        matrix combine;
+        for (i = 0; i < 4; i++) {
+            for (j = 0; j < 4; j++) {
+                for (k = 0; k < 4; k++) {
+                    combine.translator[i][j] += factor.translator[k][j] * translator[i][k];
+                }
+            }
+        }
+        return combine;
+    }
+    matrix Transpose()
+    {
+        matrix trans;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                trans.translator[i][j] = translator[j][i];
+            }
+        }
+        return trans;
+    }
+
+    void Put(int i, int j, double val)
+    {
+
+        translator[i][j] = val;
+    }
+
+    void MakeIdentity()
+    {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                translator[i][j] = i == j ? 1. : .0;
+            }
+        }
+    }
+};
+
+struct Vec2f {
+    double x, y;
+};
+struct Vec3f {
+    double x, y, z;
+    Vec3f operator+(const Vec3f& rhs)
+    {
+        Vec3f ret;
+        ret.x = x + rhs.x;
+        ret.y = y + rhs.y;
+        ret.z = z + rhs.z;
+        return ret;
+    }
+    Vec3f operator-(const Vec3f& rhs)
+    {
+        Vec3f ret;
+        ret.x = x - rhs.x;
+        ret.y = y - rhs.y;
+        ret.z = z - rhs.z;
+        return ret;
+    }
+    Vec3f operator*(double rhs)
+    {
+        Vec3f ret;
+        ret.x = x * rhs;
+        ret.y = y * rhs;
+        ret.z = z * rhs;
+        return ret;
+    }
+    Vec3f operator*(matrix& rhs)
+    {
+        Vec3f temp;
+        temp.x = rhs.translator[0][0] * x + rhs.translator[0][1] * y + rhs.translator[0][2] * z + rhs.translator[0][3];
+        temp.y = rhs.translator[1][0] * x + rhs.translator[1][1] * y + rhs.translator[1][2] * z + rhs.translator[1][3];
+        temp.z = rhs.translator[2][0] * x + rhs.translator[2][1] * y + rhs.translator[2][2] * z + rhs.translator[2][3];
+        return temp;
+    }
+    Vec3f operator*=(matrix& rhs)
+    {
+        Vec3f temp;
+        temp.x = rhs.translator[0][0] * x + rhs.translator[0][1] * y + rhs.translator[0][2] * z + rhs.translator[0][3];
+        temp.y = rhs.translator[1][0] * x + rhs.translator[1][1] * y + rhs.translator[1][2] * z + rhs.translator[1][3];
+        temp.z = rhs.translator[2][0] * x + rhs.translator[2][1] * y + rhs.translator[2][2] * z + rhs.translator[2][3];
+        *this = temp;
+        return *this;
+    }
+    Vec3f operator=(const Vec3f& rhs)
+    {
+        x = rhs.x;
+        y = rhs.y;
+        z = rhs.z;
+        return *this;
+    }
+    Vec3f cross(Vec3f& rhs)
+    {
+        Vec3f ret;
+        ret.x = y * rhs.z - z * rhs.y;
+        ret.y = z * rhs.x - x * rhs.z;
+        ret.z = x * rhs.y - y * rhs.x;
+        return ret;
+    }
+    double dot(Vec3f& rhs)
+    {
+        return x * rhs.x + y * rhs.y + z * rhs.z;
+    }
+    Vec3f normalize()
+    {
+        double len;
+        len = std::sqrt(x * x + y * y + z * z);
+        Vec3f ret;
+        ret.x = x / len;
+        ret.y = y / len;
+        ret.z = z / len;
+        return ret;
+    }
+};
+
+struct Vec3i {
+    int x, y, z;
+};
+
+inline matrix translate(double i, double j, double k)
 {
     matrix transmatrix;
     transmatrix.MakeIdentity();
@@ -42,7 +212,7 @@ matrix Translation(double i, double j, double k)
     return transmatrix;
 }
 
-matrix InverseTranslation(double i, double j, double k)
+inline matrix InverseTranslationM(double i, double j, double k)
 {
     matrix transmatrix;
     transmatrix.MakeIdentity();
@@ -52,7 +222,7 @@ matrix InverseTranslation(double i, double j, double k)
     return transmatrix;
 }
 
-matrix Scaling(double i, double j, double k)
+inline matrix scale(double i, double j, double k)
 {
     matrix scalematrix;
     scalematrix.Put(0, 0, i);
@@ -61,7 +231,8 @@ matrix Scaling(double i, double j, double k)
     scalematrix.Put(3, 3, 1);
     return scalematrix;
 }
-matrix ScalingNormal(double i, double j, double k) {
+inline matrix ScalingNormalM(double i, double j, double k)
+{
     matrix scalematrix;
     scalematrix.Put(0, 0, 1 / i);
     scalematrix.Put(1, 1, 1 / j);
@@ -70,7 +241,7 @@ matrix ScalingNormal(double i, double j, double k) {
 
     return scalematrix;
 }
-matrix InverseScaling(double i, double j, double k)
+inline matrix InverseScalingM(double i, double j, double k)
 {
     matrix scalematrix;
     scalematrix.Put(0, 0, 1 / i);
@@ -80,7 +251,7 @@ matrix InverseScaling(double i, double j, double k)
     return scalematrix;
 }
 
-matrix Rotate(double angle, double u, double v, double w)
+inline matrix rotate(double angle, double u, double v, double w)
 {
     Vec3f vecu;
     Vec3f vecv;
@@ -95,9 +266,7 @@ matrix Rotate(double angle, double u, double v, double w)
     if (u == 0 && v == 0)
         vecv.y = 1;
     vecv.normalize();
-    vecw.x = -u * w;
-    vecw.y = -v * w;
-    vecw.z = u * u + v * v;
+    vecw = vecu.cross(vecv);
     vecw.normalize();
     matrix M;
     M.Put(0, 0, vecu.x);
@@ -111,7 +280,7 @@ matrix Rotate(double angle, double u, double v, double w)
     M.Put(2, 2, vecw.z);
     M.Put(3, 3, 1);
     matrix R;
-    angle = PI * angle / 180;
+    angle = M_PI * angle / 180;
     R.Put(0, 0, 1);
     R.Put(3, 3, 1);
     R.Put(1, 1, cos(angle));
@@ -120,7 +289,8 @@ matrix Rotate(double angle, double u, double v, double w)
     R.Put(2, 2, cos(angle));
     return M.Transpose() * R * M;
 }
-matrix InverseRotation(double angle, double u, double v, double w)
+
+inline matrix InverseRotationM(double angle, double u, double v, double w)
 {
     Vec3f vecu;
     Vec3f vecv;
@@ -161,7 +331,8 @@ matrix InverseRotation(double angle, double u, double v, double w)
     return M.Transpose() * R * M;
 }
 
-matrix	Cameratransformation(Vec3f u, Vec3f v, Vec3f w) {
+inline matrix CameraT(Vec3f u, Vec3f v, Vec3f w)
+{
     matrix camera;
     camera.Put(0, 0, u.x);
     camera.Put(0, 1, u.y);
@@ -175,161 +346,6 @@ matrix	Cameratransformation(Vec3f u, Vec3f v, Vec3f w) {
     camera.Put(3, 3, 1);
     return camera;
 }
-
-
-struct Vec2f {
-    double x, y;
-};
-struct Vec3f {
-    double x, y, z;
-    Vec3f operator+(const Vec3f& rhs)
-    {
-        Vec3f ret;
-        ret.x = x + rhs.x;
-        ret.y = y + rhs.y;
-        ret.z = z + rhs.z;
-        return ret;
-    }
-    Vec3f operator-(const Vec3f& rhs)
-    {
-        Vec3f ret;
-        ret.x = x - rhs.x;
-        ret.y = y - rhs.y;
-        ret.z = z - rhs.z;
-        return ret;
-    }
-    Vec3f operator*(double rhs)
-    {
-        Vec3f ret;
-        ret.x = x * rhs;
-        ret.y = y * rhs;
-        ret.z = z * rhs;
-        return ret;
-    }
-    Vec3f operator=(const Vec3f& rhs)
-    {
-        x = rhs.x;
-        y = rhs.y;
-        z = rhs.z;
-        return *this;
-    }
-    Vec3f cross(Vec3f& rhs)
-    {
-        Vec3f ret;
-        ret.x = y * rhs.z - z * rhs.y;
-        ret.y = z * rhs.x - x * rhs.z;
-        ret.z = x * rhs.y - y * rhs.x;
-        return ret;
-    }
-    double dot(Vec3f& rhs)
-    {
-        return x * rhs.x + y * rhs.y + z * rhs.z;
-    }
-    Vec3f normalize()
-    {
-        double len;
-        len = std::sqrt(x * x + y * y + z * z);
-        Vec3f ret;
-        ret.x = x / len;
-        ret.y = y / len;
-        ret.z = z / len;
-        return ret;
-    }
-};
-
-struct Vec3i {
-    int x, y, z;
-};
-
-struct Vec4f {
-    double x, y, z, w;
-};
-
-struct matrix {
-    double translator[4][4];
-
-    matrix()
-    {
-        int i, j;
-        for (i = 0; i < 4; i++) {
-            for (j = 0; j < 4; j++)
-                translator[i][j] = 0.0;
-        }
-    }
-    void Print()
-    {
-        int i, j;
-        for (i = 0; i < 4; i++) {
-            for (j = 0; j < 4; j++) {
-                std::cout << translator[i][j] << ' ';
-            }
-            std::cout << std::endl;
-        }
-    }
-
-    Vec4f operator*(Vec4f& rhs)
-    {
-        Vec4f vec = { 0, 0, 0, 0 };
-       
-
-        vec.x += translator[0][0] * rhs.x;
-        vec.x += translator[0][1] * rhs.y;
-        vec.x += translator[0][2] * rhs.z;
-        vec.x += translator[0][3] * rhs.w;
-
-        vec.y += translator[1][0] * rhs.x;
-        vec.y += translator[1][1] * rhs.y;
-        vec.y += translator[1][2] * rhs.z;
-        vec.y += translator[1][3] * rhs.w;
-
-        vec.z += translator[2][0] * rhs.x;
-        vec.z += translator[2][1] * rhs.y;
-        vec.z += translator[2][2] * rhs.z;
-        vec.z += translator[2][3] * rhs.w;
-
-        vec.w += 1;
-
-        return vec;
-    }
-
-    matrix operator*(matrix& factor) {
-        int i, j, k;
-        matrix combine;
-        for (i = 0;i < 4;i++) {
-            for (j = 0;j < 4;j++) {
-                for (k = 0;k < 4;k++) {
-                    combine.translator[i][j] += factor.translator[k][j] * translator[i][k];
-                }
-            }
-        }
-        return combine;
-    }
-    matrix Transpose()
-    {
-        matrix trans;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                trans.translator[i][j] = translator[j][i];
-            }
-        }
-        return trans;
-    }
-
-    void Put(int i, int j, double val)
-    {
-
-        translator[i][j] = val;
-    }
-
-    void MakeIdentity()
-    {
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                translator[i][j] = i == j ? 1. : .0;
-            }
-        }
-    }
-};
 
 struct Vertex {
     Vec3f coordinates;
