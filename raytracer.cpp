@@ -21,6 +21,7 @@ struct Hit {
     int hitType;
     int hitID;
     int faceID; //needed only for mesh to store faceID with meshID
+    bool replace_all_drawn; //needed for replace all
     Vec3f intersectPoint, normal;
     double t;
 };
@@ -130,6 +131,7 @@ Hit* ClosestHitInBox(Ray& ray, Box* box, Mesh& mesh, Scene& scene)
             ret->t = t;
             ret->hitType = MESHHIT;
             ret->faceID = faceID;
+            ret->replace_all_drawn = false;
         }
     }
     if (ret->hitOccur)
@@ -179,6 +181,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
                 ret = *meshHit;
                 ret.hitID = meshID;
                 tmin = meshHit->t;
+                ret.replace_all_drawn = false;
             }
             delete meshHit;
         }
@@ -196,6 +199,7 @@ Hit ClosestHit(Ray& ray, Scene& scene)
             ret.t = t;
             ret.hitType = TRIANGLEHIT;
             ret.hitID = triangleID;
+            ret.replace_all_drawn = false;
         }
     }
     //  Sphere intersect
@@ -278,7 +282,7 @@ double* ColorTexture(Vec2f& UV, Texture& texture)
         UV.x = MIN(UV.x, 1);
         UV.y = MIN(UV.y, 1);
     } else {
-        throw - 1;
+        throw - 1.0;
     }
     double* ret = new double[3];
     int pixelx, pixely;
@@ -306,13 +310,13 @@ double* ColorTexture(Vec2f& UV, Texture& texture)
             + dx * (1 - dy) * texture.image[PIXEL(pixelx + 1, pixely) + 2]
             + (1 - dx) * (1 - dy) * texture.image[PIXEL(pixelx, pixely) + 2];
     } else {
-        throw - 1;
+        throw true;
     }
     return ret;
 #undef PIXEL
 }
 
-double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
+double* Diffuse(Ray& ray, Hit& hit, PointLight* light, Scene& scene)
 {
     Vec3f toSource, toLight;
     Texture* texture = NULL;
@@ -335,15 +339,29 @@ double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
             UV = uvForSphere(hit, scene.spheres[hit.hitID]);
         }
     } else {
-        throw - 1;
+        throw 'a';
     }
     if (texture) {
         ret = ColorTexture(*UV, *texture);
-        if (texture->colormode == REPLACE_ALL)
-            return ret;
+        if (light == NULL) {
+            if (texture->colormode == REPLACE_ALL) {
+                return ret;
+            } else {
+                ret[0] = 0;
+                ret[1] = 0;
+                ret[2] = 0;
+                return ret;
+            }
+        }
         ret[0] = ret[0] / 255;
         ret[1] = ret[1] / 255;
         ret[2] = ret[2] / 255;
+        if (texture->colormode == REPLACE_ALL) {
+            ret[0] = 0;
+            ret[1] = 0;
+            ret[2] = 0;
+            return ret;
+        }
         if (texture->colormode == REPLACE_KD) {
             // Do nothing we already use ret as diffuse coef
         } else if (texture->colormode == BLEND_KD) {
@@ -354,6 +372,14 @@ double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
             throw - 1;
         }
     }
+    if (light == NULL) {
+        if (!ret)
+            ret = new double[3];
+        ret[0] = 0;
+        ret[1] = 0;
+        ret[2] = 0;
+        return ret;
+    }
     if (!ret) {
         ret = new double[3];
         ret[0] = scene.materials[hit.materialID - 1].diffuse.x;
@@ -361,14 +387,14 @@ double* Diffuse(Ray& ray, Hit& hit, PointLight& light, Scene& scene)
         ret[2] = scene.materials[hit.materialID - 1].diffuse.z;
     }
 
-    toLight = (light.position - hit.intersectPoint);
+    toLight = (light->position - hit.intersectPoint);
     dSquare = toLight.dot(toLight);
     toLight = toLight.normalize();
     temp = MAX(toLight.dot(hit.normal), 0);
 
-    ret[0] = ret[0] * temp * (light.intensity.x / dSquare);
-    ret[1] = ret[1] * temp * (light.intensity.y / dSquare);
-    ret[2] = ret[2] * temp * (light.intensity.z / dSquare);
+    ret[0] = ret[0] * temp * (light->intensity.x / dSquare);
+    ret[1] = ret[1] * temp * (light->intensity.y / dSquare);
+    ret[2] = ret[2] * temp * (light->intensity.z / dSquare);
 
     return ret;
 }
@@ -406,6 +432,9 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         color.x = clip(scene.background_color.x);
         color.y = clip(scene.background_color.y);
         color.z = clip(scene.background_color.z);
+        ret[0] = color.x;
+        ret[1] = color.y;
+        ret[2] = color.z;
         return ret;
     }
     // Ambient color
@@ -414,11 +443,17 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
     color.z = color.z + scene.materials[hit.materialID - 1].ambient.z * scene.ambient_light.z;
 
     // Calculate shadow for all light
+    double* diffuse = Diffuse(ray, hit, NULL, scene);
+    color.x = (color.x + diffuse[0]);
+    color.y = (color.y + diffuse[1]);
+    color.z = (color.z + diffuse[2]);
     for (int lightNo = 0; lightNo < scene.point_lights.size(); lightNo++) {
         PointLight& currentLight = scene.point_lights[lightNo];
 
-        if (isShadow(hit, currentLight, scene))
+        if (isShadow(hit, currentLight, scene)) {
+
             continue;
+        }
 
         // Diffuse and Specular if not in shadow
 
@@ -428,7 +463,7 @@ unsigned char* CalculateColor(Ray& ray, int iterationCount, Scene& scene)
         color.z = (color.z + specular[2]);
         delete[] specular;
 
-        double* diffuse = Diffuse(ray, hit, currentLight, scene);
+        double* diffuse = Diffuse(ray, hit, &currentLight, scene);
         color.x = (color.x + diffuse[0]);
         color.y = (color.y + diffuse[1]);
         color.z = (color.z + diffuse[2]);
@@ -489,8 +524,8 @@ int main(int argc, char* argv[])
             Camera& camera = scene.cameras[cam];
             unsigned char* image = new unsigned char[camera.image_width * camera.image_height * 3];
             int index = 0;
-            worker(camera, image, scene, 0, camera.image_height);
-            /*
+            //worker(camera, image, scene, 0, camera.image_height);
+
             int i = camera.image_height / 10;
             std::thread t1(&worker, std::ref(camera), std::ref(image), std::ref(scene), 0, i);
             std::thread t2(&worker, std::ref(camera), std::ref(image), std::ref(scene), i, 2 * i);
@@ -516,7 +551,7 @@ int main(int argc, char* argv[])
             t8.join();
             t9.join();
             t10.join();
-*/
+
             write_ppm(camera.image_name.c_str(), image, camera.image_width, camera.image_height);
             delete[] image;
         }
